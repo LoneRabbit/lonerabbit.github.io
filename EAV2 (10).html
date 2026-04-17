@@ -1,0 +1,3331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Easy Audio Visualizer 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Montserrat:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;700&family=Bebas+Neue&family=Raleway:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;700&family=Anton&family=Space+Grotesk:wght@400;700&family=Inter:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #07080e;
+  --panel:   #0d0e18;
+  --panel2:  #14152080;
+  --panel3:  #1a1b2a;
+  --border:  #2a2b40;
+  --accent:  #a78bfa;
+  --accent2: #f5a623;
+  --red:     #f04060;
+  --text:    #e8e8f0;
+  --dim:     #6b6d8a;
+  --dim2:    #3a3b52;
+  --grad-a:  #7c6ff7;
+  --grad-b:  #c66fda;
+  --grad-c:  #f5a623;
+}
+body {
+  background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif;
+  height: 100vh; overflow: hidden;
+  display: grid;
+  grid-template-rows: 50px 1fr 70px;
+  grid-template-columns: 230px 1fr 275px;
+  grid-template-areas: "header header header" "left canvas right" "footer footer footer";
+}
+
+/* HEADER */
+header {
+  grid-area: header;
+  background: linear-gradient(90deg, #0d0e1a 0%, #12102080 40%, #0d0e1a 100%),
+              linear-gradient(90deg, rgba(167,139,250,.06) 0%, rgba(198,111,218,.04) 50%, rgba(245,166,35,.06) 100%);
+  border-bottom: 1px solid rgba(167,139,250,.18);
+  display: flex; align-items: center; padding: 0 14px; gap: 8px;
+}
+.logo { display:flex; flex-direction:column; justify-content:center; gap:1px; flex-shrink:0; margin-right:4px; }
+.logo-title { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; letter-spacing:.18em; text-transform:uppercase; background:linear-gradient(90deg,#a78bfa,#c66fda,#f5a623); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; white-space:nowrap; }
+.logo-sub { font-family:'DM Sans',sans-serif; font-weight:400; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); white-space:nowrap; padding-top:2px; }
+.logo em { color: var(--dim); font-style: normal; }
+.btn {
+  padding: 5px 13px; border-radius: 5px; border: 1px solid var(--border);
+  background: var(--panel2); color: var(--text); font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px; cursor: pointer; white-space: nowrap;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: linear-gradient(90deg,#7c6ff7,#c66fda); color: #fff; border-color: #a78bfa; font-weight:600; }
+.btn.primary:hover { background: linear-gradient(90deg,#9b8ffa,#d47ee8); border-color: #b89cf9; }
+.btn.active { border-color: var(--red); color: var(--red); }
+.btn:disabled { opacity:.4; cursor:not-allowed; pointer-events:none; }
+.tag { padding:2px 8px; border-radius:3px; font-family:'JetBrains Mono',monospace; font-size:10px; background:var(--panel3); color:var(--dim); border:1px solid var(--border); }
+.hfill { flex:1; }
+.header-filename { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* LEFT */
+.left-panel {
+  grid-area: left; background: var(--panel); border-right:1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.section { padding: 10px 12px; border-bottom: 1px solid var(--border); flex-shrink:0; }
+.sec-title { font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap:5px; }
+.add-btn {
+  padding: 8px 4px; border-radius:5px; border:1px dashed var(--border);
+  background: transparent; color: var(--dim); font-family:'DM Sans',sans-serif; font-size:11px;
+  cursor: pointer; text-align:center; transition:all .15s;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+}
+.add-btn:hover { border-color:#a78bfa; color:#a78bfa; border-style:solid; background:rgba(167,139,250,.06); }
+.add-icon { font-size:13px; }
+
+.layers-header { padding:9px 12px 6px; border-bottom:1px solid var(--border); flex-shrink:0; }
+
+.elements-list { flex:1; overflow-y:auto; padding:6px; }
+.elements-empty { padding:22px 10px; text-align:center; color:var(--dim); font-size:12px; line-height:1.7; }
+.el-item {
+  display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:5px;
+  border:1px solid transparent; cursor:pointer; margin-bottom:3px; transition:all .1s;
+}
+.el-item:hover { background:var(--panel2); }
+.el-item.selected { background:rgba(167,139,250,.08); border-color:#a78bfa; }
+.el-item.selected .el-name { color:#a78bfa; }
+.el-icon { width:24px; height:24px; border-radius:3px; background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; color:var(--dim); }
+.el-item.selected .el-icon { background:rgba(167,139,250,.12); color:#a78bfa; }
+.el-name { flex:1; font-size:11.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.el-btns { display:flex; gap:2px; flex-shrink:0; }
+.icob {
+  width:17px; height:17px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:10px; border-radius:3px; border:none; background:transparent; transition:color .1s;
+}
+.icob:hover { color:var(--text); }
+.icob.del:hover { color:var(--red); }
+.icob.order { font-size:9px; }
+
+/* CANVAS */
+.canvas-area {
+  grid-area: canvas; display:flex; align-items:center; justify-content:center;
+  background:#05060b; position:relative; overflow:hidden;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(124,111,247,.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 30%, rgba(198,111,218,.04) 0%, transparent 60%),
+    linear-gradient(rgba(255,255,255,.01) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.01) 1px,transparent 1px);
+  background-size:100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+.canvas-wrap { position:relative; box-shadow:0 0 0 1px var(--border), 0 0 60px rgba(0,0,0,.7); }
+#preview { display:block; }
+.canvas-hint { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; }
+.canvas-hint h2 { font-family:'Syne',sans-serif; font-size:22px; font-weight:700; color:var(--dim2); margin-bottom:6px; }
+.canvas-hint p { font-size:12px; color:var(--dim2); }
+.scale-badge { position:absolute; bottom:10px; right:10px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--dim); background:var(--panel); border:1px solid var(--border); padding:2px 7px; border-radius:3px; }
+
+/* RIGHT */
+.right-panel {
+  grid-area: right; background:var(--panel); border-left:1px solid var(--border);
+  display:flex; flex-direction:column; overflow-y:auto;
+}
+.global-section { padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.no-sel { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--dim); font-size:12px; text-align:center; padding:20px; gap:6px; line-height:1.6; }
+.no-sel-icon { font-size:24px; color:var(--dim2); }
+.prop-group { padding:10px 12px; border-bottom:1px solid var(--border); }
+.prop-row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.prop-row:last-child { margin-bottom:0; }
+.prop-label { font-size:11px; color:var(--dim); flex:0 0 64px; white-space:nowrap; }
+.pi {
+  flex:1; background:var(--bg); border:1px solid var(--border); border-radius:4px;
+  color:var(--text); padding:4px 6px; font-size:11.5px; font-family:'JetBrains Mono',monospace;
+  width:100%; min-width:0;
+}
+.pi:focus { outline:none; border-color:var(--accent); }
+.pi[type=range] { padding:0; height:4px; appearance:none; background:var(--border); cursor:pointer; border:none; }
+.pi[type=range]::-webkit-slider-thumb { appearance:none; width:11px; height:11px; border-radius:50%; background:linear-gradient(135deg,#a78bfa,#c66fda); cursor:pointer; }
+.pi[type=color] { padding:1px; height:24px; cursor:pointer; }
+.pi[type=checkbox] { width:13px; height:13px; cursor:pointer; accent-color:var(--accent); flex:none; margin:0; }
+select.pi { padding:4px 6px; }
+.prop-val { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--accent); flex:0 0 28px; text-align:right; }
+
+/* FOOTER */
+footer {
+  grid-area: footer; background:var(--panel); border-top:1px solid var(--border);
+  display:flex; align-items:center; padding:0 14px; gap:8px;
+}
+.transport { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.tbtn { width:29px; height:29px; border-radius:5px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .1s; }
+.tbtn:hover { border-color:var(--accent); color:var(--accent); }
+#btnPlay { width:33px; height:33px; background:linear-gradient(135deg,#7c6ff7,#c66fda); border-color:#a78bfa; color:#fff; font-size:13px; }
+#btnPlay:hover { background:linear-gradient(135deg,#9b8ffa,#d47ee8); }
+.seek-wrap { flex:1; display:flex; align-items:center; gap:8px; min-width:0; }
+.seek-time { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); flex-shrink:0; }
+.seek-track { flex:1; height:22px; cursor:pointer; display:flex; align-items:center; position:relative; }
+.seek-inner { width:100%; height:4px; background:var(--border); border-radius:2px; position:relative; pointer-events:none; }
+.seek-fill { height:100%; background:linear-gradient(90deg,#7c6ff7,#c66fda); border-radius:2px; width:0%; }
+.seek-thumb { position:absolute; top:50%; transform:translate(-50%,-50%); width:9px; height:9px; border-radius:50%; background:#a78bfa; left:0%; }
+.vol-wrap { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.vol-icon { font-size:12px; color:var(--dim); }
+#volSlider { width:60px; height:4px; appearance:none; background:var(--border); border-radius:2px; cursor:pointer; }
+#volSlider::-webkit-slider-thumb { appearance:none; width:10px; height:10px; border-radius:50%; background:var(--dim); }
+.export-wrap { display:flex; gap:5px; flex-shrink:0; }
+.rec-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--red); margin-right:3px; }
+.blink { animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+
+/* EXPORT MODAL */
+#exportModal {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.8);
+  z-index:200; align-items:center; justify-content:center;
+}
+#exportModal.show { display:flex; }
+.modal-box { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:28px 32px; min-width:340px; text-align:center; }
+.modal-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; background:linear-gradient(90deg,#a78bfa,#c66fda); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:6px; }
+.modal-sub { font-size:12px; color:var(--dim); margin-bottom:20px; }
+.modal-bar-bg { background:var(--panel3); border-radius:4px; height:6px; overflow:hidden; margin-bottom:10px; }
+.modal-bar { height:100%; background:linear-gradient(90deg,#7c6ff7,#c66fda,#f5a623); border-radius:4px; width:0%; transition:width .3s; }
+.modal-pct { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.modal-eta { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); margin-bottom:20px; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+::-webkit-scrollbar-thumb:hover { background:var(--dim); }
+
+/* Canvas interaction overlay */
+.canvas-wrap { cursor: default; }
+.canvas-wrap.move-mode { cursor: move; }
+.canvas-wrap.resize-mode { cursor: nwse-resize; }
+#overlay { position:absolute; inset:0; pointer-events:none; }
+.el-ghost { position:absolute; border:1.5px solid var(--accent); border-radius:3px; pointer-events:none; background:rgba(90,228,208,.06); }
+.el-ghost .ghost-label { position:absolute; top:-18px; left:0; font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--accent); background:rgba(7,8,14,.85); padding:1px 5px; border-radius:3px; white-space:nowrap; }
+.resize-handle { position:absolute; width:8px; height:8px; background:var(--accent); border-radius:50%; transform:translate(-50%,-50%); cursor:nwse-resize; }
+
+/* Export options modal */
+#exportOptsModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:210; align-items:center; justify-content:center; }
+#exportOptsModal.show { display:flex; }
+.opts-box { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:24px 28px; min-width:360px; }
+.opts-box h3 { font-family:'Syne',sans-serif; font-size:17px; color:var(--accent); margin-bottom:16px; }
+.opts-row { display:flex; align-items:center; gap:10px; margin-bottom:11px; }
+.opts-lbl { font-size:11px; color:var(--dim); flex:0 0 90px; }
+.opts-row .pi { flex:1; }
+.opts-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+
+/* Slider value badge */
+.pi-val { font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--accent); flex:0 0 34px; text-align:right; }
+.pi-num { font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--accent); width:40px; background:var(--bg); border:1px solid var(--border); border-radius:3px; text-align:center; padding:2px 3px; -moz-appearance:textfield; }
+.pi-num::-webkit-outer-spin-button, .pi-num::-webkit-inner-spin-button { -webkit-appearance:none; }
+.pi-num:focus { outline:none; border-color:var(--accent); }
+
+/* Hz inputs */
+.hz-input { flex:1; padding:3px 5px; font-size:10.5px; }
+.hz-unit  { font-size:10px; color:var(--dim); flex-shrink:0; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-title">EAV<sup style="-webkit-text-fill-color:transparent;background:linear-gradient(90deg,#c66fda,#f5a623);-webkit-background-clip:text;background-clip:text;font-size:0.65em;vertical-align:super;letter-spacing:0">2</sup></span>
+    <div style="display:flex;align-items:center;gap:7px">
+      <span class="logo-sub">v1.16</span>
+      <a href="https://lonerabbit.itch.io" target="_blank" rel="noopener"
+         style="font-family:'DM Sans',sans-serif;font-size:8px;color:var(--dim);text-decoration:none;opacity:0.65;transition:opacity .15s;letter-spacing:.04em"
+         onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">© 2026 alonerabbit</a>
+    </div>
+  </div>
+  <button class="btn" id="importAudio">♪ Audio</button>
+  <div style="width:1px;height:20px;background:var(--border);margin:0 2px;flex-shrink:0"></div>
+  <button class="btn" id="btnSave">💾 Save</button>
+  <button class="btn" id="btnLoad">📂 Load</button>
+  <button class="btn" id="btnTemplates">⊞ Templates</button>
+  <div class="hfill"></div>
+  <div class="header-filename" id="audioName">No audio loaded</div>
+</header>
+
+<div class="left-panel">
+  <div class="section">
+    <div class="sec-title">Add Element</div>
+    <div class="add-grid">
+      <button class="add-btn" data-type="bars"><span class="add-icon">▋▋▋</span>Bar Viz</button>
+      <button class="add-btn" data-type="circular"><span class="add-icon">◎</span>Circular</button>
+      <button class="add-btn" data-type="waveform"><span class="add-icon">〜</span>Waveform</button>
+      <button class="add-btn" data-type="progress"><span class="add-icon">━━</span>Progress</button>
+      <button class="add-btn" data-type="text"><span class="add-icon">Aa</span>Text</button>
+      <button class="add-btn" data-type="energy"><span class="add-icon">✦</span>Energy</button>
+      <button class="add-btn" data-type="spectrum"><span class="add-icon">⫿⫿</span>Spectrum</button>
+      <button class="add-btn" data-type="particles"><span class="add-icon">⁘</span>Particles</button>
+      <button class="add-btn" data-type="image" style="grid-column:1/-1;flex-direction:row;justify-content:center;gap:6px"><span class="add-icon">🖼</span>Image Layer</button>
+    </div>
+  </div>
+  <div class="layers-header"><div class="sec-title" style="margin-bottom:0">Layers</div></div>
+  <div class="elements-list" id="elementsList">
+    <div class="elements-empty">Add elements above<br>to build your visualizer</div>
+  </div>
+</div>
+
+<div class="canvas-area" id="canvasArea">
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="preview" width="1920" height="1080"></canvas>
+    <svg id="overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <div class="canvas-hint" id="canvasHint">
+    <h2>Import audio to begin</h2>
+    <p>Add visualizer elements from the left panel</p>
+  </div>
+  <div class="scale-badge" id="scaleBadge">1920 × 1080</div>
+  <div id="canvasTooltip" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(7,8,14,.85);border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--dim);pointer-events:none;display:none;white-space:nowrap;backdrop-filter:blur(4px);"></div>
+  <div id="statusBar" style="position:absolute;top:10px;right:12px;font-family:JetBrains Mono,monospace;font-size:10.5px;color:var(--dim);background:rgba(7,8,14,.8);border:1px solid var(--border);border-radius:5px;padding:3px 9px;pointer-events:none;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+</div>
+
+<div class="right-panel" id="rightPanel">
+  <!-- Global settings always visible -->
+  <div class="global-section">
+    <div class="sec-title">Global Settings</div>
+    <div class="prop-row">
+      <span class="prop-label">Smoothness</span>
+      <input type="range" class="pi" id="gSmooth" min="0" max="98" step="1" value="82">
+      <span class="prop-val" id="gSmoothVal">82%</span>
+    </div>
+    <div class="prop-row">
+      <span class="prop-label">FFT Size</span>
+      <select class="pi" id="gFftSize">
+        <option value="512">512</option>
+        <option value="1024">1024</option>
+        <option value="2048" selected>2048</option>
+        <option value="4096">4096</option>
+      </select>
+    </div>
+    <div class="prop-row">
+      <span class="prop-label">Export FPS</span>
+      <select class="pi" id="gFps">
+        <option value="24">24</option>
+        <option value="30" selected>30</option>
+        <option value="60">60</option>
+      </select>
+    </div>
+  </div>
+  <div class="global-section">
+    <div class="sec-title">Canvas</div>
+    <div class="prop-row">
+      <span class="prop-label">Resolution</span>
+      <select class="pi" id="gResolution">
+        <option value="1920x1080">1920×1080</option>
+        <option value="1280x720">1280×720</option>
+        <option value="854x480">854×480</option>
+        <option value="2560x1440">2560×1440</option>
+        <option value="3840x2160">3840×2160</option>
+        <option value="1080x1080">1080×1080 (Square)</option>
+        <option value="1080x1920">1080×1920 (Portrait)</option>
+      </select>
+    </div>
+    <div class="prop-row">
+      <span class="prop-label">Zoom</span>
+      <input type="range" class="pi" id="gZoom" min="25" max="200" step="5" value="100" style="flex:1">
+      <span class="prop-val" id="gZoomVal">100%</span>
+    </div>
+    <div class="prop-row" style="gap:5px">
+      <button class="btn" id="btnZoomFit" style="flex:1;font-size:10.5px;padding:4px 6px">Fit</button>
+      <button class="btn" id="btnZoom100" style="flex:1;font-size:10.5px;padding:4px 6px">100%</button>
+    </div>
+  </div>
+  <div class="global-section">
+    <div class="sec-title">Background</div>
+    <div class="prop-row">
+      <span class="prop-label">Mode</span>
+      <select class="pi" id="gBgMode">
+        <option value="dark">Dark Grid</option>
+        <option value="solid">Solid Color</option>
+        <option value="gradient">Gradient</option>
+        <option value="image">Image</option>
+      </select>
+    </div>
+    <div id="bgSolidRow" class="prop-row" style="display:none">
+      <span class="prop-label">Color</span>
+      <input type="color" class="pi" id="gBgColor" value="#07080e">
+    </div>
+    <div id="bgGradRow" style="display:none">
+      <div class="prop-row">
+        <span class="prop-label">Color A</span>
+        <input type="color" class="pi" id="gBgGradA" value="#1a0533">
+      </div>
+      <div class="prop-row">
+        <span class="prop-label">Color B</span>
+        <input type="color" class="pi" id="gBgGradB" value="#0a1a3a">
+      </div>
+      <div class="prop-row">
+        <span class="prop-label">Angle</span>
+        <input type="range" class="pi" id="gBgGradAngle" min="0" max="360" step="1" value="135" style="flex:1">
+        <span class="prop-val" id="gBgGradAngleVal">135°</span>
+      </div>
+    </div>
+    <div id="bgImageRow" style="display:none">
+      <div class="prop-row">
+        <span class="prop-label">File</span>
+        <button class="btn" id="importBG2" style="font-size:11px;padding:4px 8px">Choose…</button>
+      </div>
+      <div class="prop-row">
+        <span class="prop-label">Fit</span>
+        <select class="pi" id="gBgImageFit">
+          <option value="cover">Cover</option>
+          <option value="contain">Contain</option>
+          <option value="stretch">Stretch</option>
+          <option value="tile">Tile</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <!-- Element properties -->
+  <div id="noSel" class="no-sel">
+    <div class="no-sel-icon">◻</div>
+    Select a layer<br>to edit its properties
+  </div>
+  <div id="propsPane" style="display:none;"></div>
+</div>
+
+<footer>
+  <div class="transport">
+    <button class="tbtn" id="btnRestart" title="Restart">⏮</button>
+    <button class="tbtn" id="btnPlay">▶</button>
+  </div>
+  <div class="seek-wrap">
+    <span class="seek-time" id="timeNow">0:00</span>
+    <div class="seek-track" id="seekTrack">
+      <div class="seek-inner">
+        <div class="seek-fill" id="seekFill"></div>
+        <div class="seek-thumb" id="seekThumb"></div>
+      </div>
+    </div>
+    <span class="seek-time" id="timeTotal">0:00</span>
+  </div>
+  <div class="vol-wrap">
+    <span class="vol-icon">🔊</span>
+    <input type="range" min="0" max="1" step="0.02" value="0.8" id="volSlider">
+  </div>
+  <div class="export-wrap">
+    <button class="btn" id="btnRecord"><span class="rec-dot"></span>Record</button>
+    <button class="btn primary" id="btnExport">⬇ Export</button>
+  </div>
+</footer>
+
+<input type="file" id="audioInput" accept="audio/*" style="display:none">
+<input type="file" id="bgInput" accept="image/*" style="display:none">
+<input type="file" id="imageInput" accept="image/*" style="display:none">
+<input type="file" id="projInput" accept=".eav2,.json" style="display:none">
+
+
+<!-- Export Options Modal -->
+<div id="exportOptsModal">
+  <div class="opts-box">
+    <h3>Export Settings</h3>
+    <div class="opts-row"><span class="opts-lbl">Format</span>
+      <select class="pi" id="optFormat"><option value="webm-vp9">WebM (VP9)</option><option value="webm-vp8">WebM (VP8)</option><option value="fallback">Real-time (WebM)</option></select>
+    </div>
+    <div class="opts-row"><span class="opts-lbl">Resolution</span>
+      <select class="pi" id="optRes"><option value="1920x1080">1920×1080 (1080p)</option><option value="1280x720">1280×720 (720p)</option><option value="854x480">854×480 (480p)</option></select>
+    </div>
+    <div class="opts-row"><span class="opts-lbl">FPS</span>
+      <select class="pi" id="optFps"><option value="24">24 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option></select>
+    </div>
+    <div class="opts-row"><span class="opts-lbl">Video Bitrate</span>
+      <select class="pi" id="optVBitrate"><option value="4000000">4 Mbps</option><option value="8000000" selected>8 Mbps</option><option value="16000000">16 Mbps</option><option value="24000000">24 Mbps</option></select>
+    </div>
+    <div class="opts-row"><span class="opts-lbl">Audio Bitrate</span>
+      <select class="pi" id="optABitrate"><option value="96000">96 kbps</option><option value="128000" selected>128 kbps</option><option value="192000">192 kbps</option><option value="320000">320 kbps</option></select>
+    </div>
+    <div id="formatNote" style="font-size:10.5px;color:var(--dim);margin-bottom:4px;line-height:1.5;"></div>
+    <div class="opts-actions">
+      <button class="btn" id="optsCancel">Cancel</button>
+      <button class="btn primary" id="optsStart">Start Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- Templates Modal -->
+<div id="templatesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:220;align-items:center;justify-content:center;flex-direction:column;gap:0">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:28px 32px;width:560px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;background:linear-gradient(90deg,#a78bfa,#c66fda);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Templates</div>
+      <button class="btn" id="tmplClose">✕ Close</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="tmplGrid"></div>
+  </div>
+</div>
+<!-- Custom confirm dialog (confirm() blocked in sandboxed iframes) -->
+<div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;min-width:300px;max-width:420px;text-align:center">
+    <div id="confirmMsg" style="font-size:13px;color:var(--text);margin-bottom:20px;line-height:1.5"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn" id="confirmNo" style="min-width:80px">Cancel</button>
+      <button class="btn primary" id="confirmYes" style="min-width:80px">OK</button>
+    </div>
+  </div>
+</div>
+<!-- Save audio modal -->
+<div id="saveAudioModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:26px 30px;min-width:340px;text-align:center">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">Save Project</div>
+    <div style="font-size:12px;color:var(--dim);margin-bottom:20px;line-height:1.6">Include the audio file in the .eav2 project?<br>This makes the file larger but self-contained.</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn" id="saveNoAudio" style="min-width:110px">No — Save Space</button>
+      <button class="btn primary" id="saveWithAudio" style="min-width:110px">Yes — Include Audio</button>
+    </div>
+  </div>
+</div>
+<!-- Export Modal -->
+<div id="exportModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">Exporting</div>
+    <div class="modal-sub" id="modalSub">Rendering frames — this is much faster than real-time</div>
+    <div class="modal-pct" id="modalPct">0%</div>
+    <div class="modal-bar-bg"><div class="modal-bar" id="modalBar"></div></div>
+    <div class="modal-eta" id="modalEta">Calculating...</div>
+    <button class="btn" id="cancelExport" style="margin-top:6px;">Cancel</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+// Canvas roundRect polyfill
+// ═══════════════════════════════════════════════════════
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    r = Math.min(Math.abs(r || 0), Math.abs(w) / 2, Math.abs(h) / 2);
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    this.closePath();
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// GLOBAL SETTINGS
+// ═══════════════════════════════════════════════════════
+const G = {
+  smoothness: 0.82,
+  fftSize: 2048,
+  exportFps: 30,
+  canvasW: 1920,
+  canvasH: 1080,
+  zoom: 1.0,
+};
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const S = {
+  elements: [], selectedId: null, nextId: 1,
+  audioCtx: null, analyser: null, gainNode: null, destNode: null,
+  audioBuffer: null, audioSrc: null,
+  startTime: 0, pauseOffset: 0, isPlaying: false, duration: 0,
+  bgImage: null,
+  bgMode: 'dark',        // 'dark'|'solid'|'gradient'|'image'
+  bgColor: '#07080e',    // solid color
+  bgGradient: { a:'#1a0533', b:'#0a1a3a', angle:135 },  // gradient
+  bgImageFit: 'cover',  // 'cover'|'contain'|'stretch'|'tile'
+  freqData: null, waveData: null,
+  smoothed: null, smoothedWave: null,
+  recording: false, mediaRecorder: null,
+  exportSmoothed: null,   // used during fast-export
+  exportWave: null,
+  _exportTime: null,
+  cancelExport: false,
+  bgDataUrl: null,
+  audioFileName: '',
+  dragEl: null, dragMode: null,
+  dragOx: 0, dragOy: 0, dragElStartX: 0, dragElStartY: 0, dragElStartW: 0, dragElStartH: 0,
+  hoverEl: null,
+};
+
+// ═══════════════════════════════════════════════════════
+// CANVAS SETUP
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('preview');
+const ctx    = canvas.getContext('2d');
+const wrap   = document.getElementById('canvasWrap');
+const areaEl = document.getElementById('canvasArea');
+const badge  = document.getElementById('scaleBadge');
+const hint   = document.getElementById('canvasHint');
+
+
+function setCanvasResolution(w, h) {
+  G.canvasW = w; G.canvasH = h;
+  canvas.width  = w;
+  canvas.height = h;
+  // Invalidate bg cache
+  _bgCache.w = 0;
+  fitCanvas();
+}
+
+function fitCanvas() {
+  const cw = G.canvasW || 1920, ch = G.canvasH || 1080;
+  const pad = 48;
+  // Base scale to fit in viewport
+  const fitScale = Math.min((areaEl.clientWidth - pad) / cw, (areaEl.clientHeight - pad) / ch);
+  // Apply user zoom on top of fit scale — clamp so it can't go negative
+  const scale = Math.max(0.01, fitScale * (G.zoom || 1.0));
+  const dispW = Math.round(cw * scale);
+  const dispH = Math.round(ch * scale);
+  // Set wrap and canvas display size explicitly — never use % for both
+  // dimensions together as it breaks aspect ratio when zoom > 1
+  wrap.style.width   = dispW + 'px';
+  wrap.style.height  = dispH + 'px';
+  canvas.style.width  = dispW + 'px';
+  canvas.style.height = dispH + 'px';
+  badge.textContent = cw + ' × ' + ch + '  ·  ' + Math.round(scale * 100) + '%';
+  // Update overlay SVG dimensions
+  if (window._updateOverlay) window._updateOverlay();
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+
+// ═══════════════════════════════════════════════════════
+// AUDIO ENGINE
+// ═══════════════════════════════════════════════════════
+function initAudio() {
+  if (S.audioCtx) return;
+  S.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  S.analyser = S.audioCtx.createAnalyser();
+  S.analyser.fftSize = G.fftSize;
+  S.analyser.smoothingTimeConstant = 0;
+  S.gainNode = S.audioCtx.createGain();
+  S.gainNode.gain.value = 0.8;
+  S.analyser.connect(S.gainNode);
+  S.gainNode.connect(S.audioCtx.destination);
+  allocAnalyserArrays();
+}
+
+function allocAnalyserArrays() {
+  if (!S.analyser) return;
+  const bsz = S.analyser.frequencyBinCount;
+  S.freqData     = new Uint8Array(bsz);
+  S.waveData     = new Uint8Array(S.analyser.fftSize);
+  S.smoothed     = new Float32Array(bsz);
+  S.smoothedWave = new Float32Array(S.analyser.fftSize);
+}
+
+function stopCurrentSource() {
+  if (S.audioSrc) {
+    S.audioSrc.onended = null;
+    try { S.audioSrc.stop(); } catch(e) {}
+    S.audioSrc = null;
+  }
+}
+
+function playAudio(offset = 0) {
+  if (!S.audioBuffer || !S.audioCtx) return;
+  stopCurrentSource();
+  const src = S.audioCtx.createBufferSource();
+  src.buffer = S.audioBuffer;
+  src.connect(S.analyser);
+  // Do NOT connect src directly to destNode here — the signal already
+  // reaches destNode via analyser → gainNode → destNode (set in ensureDestNode).
+  // A direct connection would double the signal and cause distortion.
+  src.start(0, Math.max(0, Math.min(offset, S.duration - 0.01)));
+  src.onended = () => {
+    if (S.isPlaying) { S.isPlaying = false; S.pauseOffset = 0; refreshPlayBtn(); }
+  };
+  S.audioSrc  = src;
+  S.startTime = S.audioCtx.currentTime - offset;
+  S.isPlaying = true;
+  refreshPlayBtn();
+}
+
+function pauseAudio() {
+  if (!S.isPlaying) return;
+  S.pauseOffset = currentTime();
+  stopCurrentSource();
+  S.isPlaying = false;
+  refreshPlayBtn();
+}
+
+function currentTime() {
+  if (!S.audioCtx) return 0;
+  return S._exportTime !== null ? S._exportTime
+       : S.isPlaying ? Math.max(0, S.audioCtx.currentTime - S.startTime)
+       : S.pauseOffset;
+}
+
+function fmt(s) {
+  s = Math.max(0, s);
+  return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2,'0')}`;
+}
+
+function refreshPlayBtn() {
+  document.getElementById('btnPlay').textContent = S.isPlaying ? '⏸' : '▶';
+}
+
+// ═══════════════════════════════════════════════════════
+// GLOBAL SETTINGS BINDINGS
+// ═══════════════════════════════════════════════════════
+document.getElementById('gSmooth').addEventListener('input', e => {
+  G.smoothness = parseInt(e.target.value) / 100;
+  document.getElementById('gSmoothVal').textContent = e.target.value;
+});
+document.getElementById('gFftSize').addEventListener('change', e => {
+  G.fftSize = parseInt(e.target.value);
+  if (S.analyser) {
+    S.analyser.fftSize = G.fftSize;
+    allocAnalyserArrays();
+  }
+});
+document.getElementById('gFps').addEventListener('change', e => {
+  G.exportFps = parseInt(e.target.value);
+});
+
+// ═══════════════════════════════════════════════════════
+// FILE IMPORTS
+// ═══════════════════════════════════════════════════════
+document.getElementById('importAudio').addEventListener('click', () => document.getElementById('audioInput').click());
+// importBG wired in bg controls block below
+
+document.getElementById('audioInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  e.target.value = '';
+  const nameEl = document.getElementById('audioName');
+  const prev = nameEl.textContent;
+  nameEl.textContent = 'Loading...';
+  setStatus('Decoding "' + f.name + '"...');
+  try {
+    initAudio();
+    if (S.audioCtx.state === 'suspended') await S.audioCtx.resume();
+    if (S.isPlaying) pauseAudio();
+    S.pauseOffset = 0;
+    // Read as data URL for optional project embedding, and as ArrayBuffer for decoding
+    const dataUrl = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result);
+      fr.onerror = rej;
+      fr.readAsDataURL(f);
+    });
+    S._audioDataUrl = dataUrl;
+    const ab = await f.arrayBuffer();
+    S.audioBuffer = await new Promise((res, rej) => S.audioCtx.decodeAudioData(ab, res, rej));
+    S.duration = S.audioBuffer.duration;
+    S.audioFileName = f.name;
+    nameEl.textContent = f.name;
+    document.getElementById('timeTotal').textContent = fmt(S.duration);
+    hint.style.display = 'none';
+    setStatus('');
+  } catch(err) {
+    nameEl.textContent = prev;
+    setStatus('Error: could not decode ' + f.name);
+    setTimeout(() => setStatus(''), 4000);
+  }
+});
+
+document.getElementById('bgInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  e.target.value = '';
+  setStatus('Loading background...');
+  const fr = new FileReader();
+  fr.onload = ev => {
+    const img = new Image();
+    img.onload  = () => { S.bgImage = img; S.bgDataUrl = ev.target.result; S.bgMode = 'image'; setStatus(''); };
+    img.onerror = () => setStatus('Error loading BG image');
+    img.src = ev.target.result;
+  };
+  fr.readAsDataURL(f);
+});
+
+
+document.getElementById('imageInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  const repId = ('repId' in e.target.dataset) ? parseInt(e.target.dataset.repId) : null;
+  delete e.target.dataset.repId;
+  e.target.value = '';
+  if (!f) return;
+  setStatus('Loading image...');
+  const fr = new FileReader();
+  fr.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      setStatus('');
+      if (repId !== null) {
+        const el = S.elements.find(x => x.id === repId);
+        if (el) { el._img = img; el._dataUrl = ev.target.result; if (S.selectedId === repId) renderProps(el); }
+      } else {
+        const el = { ...DEFAULTS.image, id: S.nextId++, name: f.name.replace(/\.[^.]+$/, '').slice(0,22), _img: img, _dataUrl: ev.target.result };
+        S.elements.push(el);
+        renderLayerList();
+        selectEl(el.id);
+      }
+    };
+    img.onerror = () => setStatus('Error loading image');
+    img.src = ev.target.result;
+  };
+  fr.readAsDataURL(f);
+});
+
+// ═══════════════════════════════════════════════════════
+// TRANSPORT
+// ═══════════════════════════════════════════════════════
+document.getElementById('btnPlay').addEventListener('click', () => {
+  if (!S.audioBuffer) return;
+  if (S.audioCtx.state === 'suspended') S.audioCtx.resume();
+  S.isPlaying ? pauseAudio() : playAudio(S.pauseOffset);
+});
+document.getElementById('btnRestart').addEventListener('click', () => {
+  if (!S.audioBuffer) return;
+  if (S.audioCtx.state === 'suspended') S.audioCtx.resume();
+  S.pauseOffset = 0;
+  playAudio(0);
+});
+
+// SEEK — fixed with larger hit area + drag support
+let seeking = false;
+function doSeek(e) {
+  if (!S.audioBuffer) return;
+  const r   = document.getElementById('seekTrack').getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  const t   = pct * S.duration;
+  S.pauseOffset = t;
+  if (S.isPlaying) playAudio(t);
+  else { // update UI manually
+    document.getElementById('seekFill').style.width = (pct * 100) + '%';
+    document.getElementById('seekThumb').style.left  = (pct * 100) + '%';
+    document.getElementById('timeNow').textContent   = fmt(t);
+  }
+}
+document.getElementById('seekTrack').addEventListener('mousedown', e => { seeking = true; doSeek(e); });
+window.addEventListener('mousemove', e => { if (seeking) doSeek(e); });
+window.addEventListener('mouseup',   ()  => { seeking = false; });
+
+document.getElementById('volSlider').addEventListener('input', e => {
+  if (S.gainNode) S.gainNode.gain.value = parseFloat(e.target.value);
+});
+
+// ═══════════════════════════════════════════════════════
+// ELEMENT DEFAULTS
+// ═══════════════════════════════════════════════════════
+const DEFAULTS = {
+  bars: {
+    type:'bars', name:'Bar Visualizer', icon:'▋▋',
+    x:0.1, y:0.82, width:0.8, height:0.28,
+    barCount:64, barSpacing:0.12, barThickness:1.0, rotation:0, colorTop:'#5ae4d0', colorBottom:'#000000',
+    opacity:1, glow:false, mirror:true, rounded:true,
+    sensitivity:1.0, freqLow:0, freqHigh:16000,
+  },
+  circular: {
+    type:'circular', name:'Circular', icon:'◎',
+    x:0.5, y:0.5, radius:0.14,
+    colorTop:'#f5a623', opacity:1, glow:false, bars:128,
+    sensitivity:1.0, freqLow:0, freqHigh:18000,
+  },
+  waveform: {
+    type:'waveform', name:'Waveform', icon:'〜',
+    x:0.1, y:0.5, width:0.8, height:0.12,
+    color:'#5ae4d0', opacity:0.75, lineWidth:2, fill:false,
+    sensitivity:1.0, freqLow:0, freqHigh:20000,
+  },
+  progress: {
+    type:'progress', name:'Progress Bar', icon:'━',
+    x:0.05, y:0.93, width:0.9, height:0.008,
+    colorFill:'#5ae4d0', colorBg:'#1a1a2a',
+    opacity:1, showTime:true, glow:true,
+  },
+  text: {
+    type:'text', name:'Text', icon:'Aa',
+    x:0.5, y:0.12, content:'Track Title',
+    fontSize:0.048, color:'#ffffff', opacity:1,
+    bold:true, italic:false, align:'center', shadow:true,
+    font:'Syne', outlineEnabled:false, outlineColor:'#000000', outlineWidth:2,
+    scroll:false, scrollSpeed:40, scrollWidth:0.7, playlist:'', playlistMode:false,
+  },
+  energy: {
+    type:'energy', name:'Energy Pulse', icon:'✦',
+    x:0.5, y:0.5, radius:0.08,
+    color:'#5ae4d0', colorSecondary:'#f5a623', opacity:0.9, glow:false,
+    sensitivity:1.0, freqLow:0, freqHigh:300,
+    ringCount:3, ringThickness:1.5, pulseSpeed:0.85, useSecondary:false,
+  },
+  spectrum: {
+    type:'spectrum', name:'Spectrum Fill', icon:'⫿⫿',
+    x:0.5, y:0.88, width:0.8, height:0.32,
+    colorTop:'#5ae4d0', colorBottom:'rgba(90,228,208,0)',
+    opacity:0.85, glow:false, mirror:true,
+    sensitivity:1.0, freqLow:0, freqHigh:18000,
+  },
+  particles: {
+    type:'particles', name:'Particles', icon:'⁘',
+    x:0.5, y:0.5, width:0.9, height:0.7,
+    color:'#5ae4d0', colorSecondary:'#f5a623', opacity:0.9, glow:false,
+    count:120, sizeMin:1, sizeMax:4, speed:1.0, trail:false, rainbow:false, burst:false,
+    sensitivity:1.2, freqLow:0, freqHigh:12000,
+  },
+  image: {
+    type:'image', name:'Image', icon:'🖼',
+    x:0.5, y:0.5, width:0.5, height:0.3,
+    opacity:1, fit:'contain', rotation:0,
+    _img:null, _dataUrl:null,
+  },
+
+
+};
+
+
+// ═══════════════════════════════════════════════════════
+// KEYFRAME + INTRO ENGINE
+// ═══════════════════════════════════════════════════════
+
+// (lerp is defined earlier in the file)
+function clamp01(t) { return t < 0 ? 0 : t > 1 ? 1 : t; }
+function easeOut(t) { return 1 - (1 - t) * (1 - t); }
+
+// Apply intro animation — returns a ctx-level transform/alpha override
+// Call ctx.save() before this; ctx.restore() after drawing
+function applyIntro(el, time) {
+  const intro = el.intro;
+  if (!intro || intro.type === 'none') return false;
+  const delay    = intro.delay    || 0;
+  const duration = intro.duration || 0.5;
+  const t0 = time - delay;
+  if (t0 >= duration) return false; // intro finished
+  if (t0 < 0) {
+    // Before intro starts — hide element
+    ctx.globalAlpha = 0;
+    return true;
+  }
+  const p = easeOut(clamp01(t0 / duration));
+  const cx2 = el.x * ctx.canvas.width;
+  const cy2 = el.y * ctx.canvas.height;
+  switch (intro.type) {
+    case 'fade':
+      ctx.globalAlpha *= p;
+      break;
+    case 'slideUp':
+      ctx.globalAlpha *= p;
+      ctx.translate(0, (1 - p) * 80);
+      break;
+    case 'slideDown':
+      ctx.globalAlpha *= p;
+      ctx.translate(0, -(1 - p) * 80);
+      break;
+    case 'slideLeft':
+      ctx.globalAlpha *= p;
+      ctx.translate((1 - p) * 120, 0);
+      break;
+    case 'slideRight':
+      ctx.globalAlpha *= p;
+      ctx.translate(-(1 - p) * 120, 0);
+      break;
+    case 'zoom':
+      ctx.globalAlpha *= p;
+      ctx.translate(cx2, cy2);
+      ctx.scale(0.5 + p * 0.5, 0.5 + p * 0.5);
+      ctx.translate(-cx2, -cy2);
+      break;
+    case 'blur':
+      ctx.globalAlpha *= p;
+      // Canvas doesn't have blur natively — approximate with fade + scale
+      ctx.translate(cx2, cy2);
+      ctx.scale(1 + (1 - p) * 0.04, 1 + (1 - p) * 0.04);
+      ctx.translate(-cx2, -cy2);
+      break;
+  }
+  return true;
+}
+
+// Get the interpolated value of a numeric property at a given time
+// from the element's keyframes array.
+function getKfProp(el, prop, time) {
+  if (!el.keyframes || el.keyframes.length === 0) return el[prop];
+  const kfs = el.keyframes;
+  if (time <= kfs[0].time) return kfs[0].props[prop] !== undefined ? kfs[0].props[prop] : el[prop];
+  if (time >= kfs[kfs.length - 1].time) {
+    const last = kfs[kfs.length - 1];
+    return last.props[prop] !== undefined ? last.props[prop] : el[prop];
+  }
+  // Find surrounding keyframes
+  for (let ki = 0; ki < kfs.length - 1; ki++) {
+    const a = kfs[ki], b = kfs[ki + 1];
+    if (time >= a.time && time <= b.time) {
+      const t = clamp01((time - a.time) / (b.time - a.time));
+      const ea = easeOut(t);
+      const av = a.props[prop] !== undefined ? a.props[prop] : el[prop];
+      const bv = b.props[prop] !== undefined ? b.props[prop] : el[prop];
+      if (typeof av === 'number' && typeof bv === 'number') return lerp(av, bv, ea);
+      // Non-numeric: use earlier value
+      return t < 0.5 ? av : bv;
+    }
+  }
+  return el[prop];
+}
+
+// Build an effective-props proxy for a given render time
+// Returns an object that falls back to el[prop] for non-keyframed props
+function getElAtTime(el, time) {
+  if (!el.keyframes || el.keyframes.length === 0) return el;
+  // Create a lightweight proxy that overrides keyframed properties
+  const kfProps = {};
+  const kfs = el.keyframes;
+  // Collect all animated property names
+  const allProps = new Set();
+  kfs.forEach(kf => Object.keys(kf.props).forEach(p => allProps.add(p)));
+  for (const prop of allProps) kfProps[prop] = getKfProp(el, prop, time);
+  return new Proxy(el, {
+    get(target, key) {
+      return key in kfProps ? kfProps[key] : target[key];
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// ELEMENT CRUD + LAYER LIST
+// ═══════════════════════════════════════════════════════
+document.querySelectorAll('.add-btn').forEach(b => b.addEventListener('click', () => addElement(b.dataset.type)));
+
+function addElement(type) {
+  if (type === 'image') {
+    delete document.getElementById('imageInput').dataset.repId;
+    document.getElementById('imageInput').click();
+    return;
+  }
+
+  const def = DEFAULTS[type];
+  const el  = Object.assign({}, def, {
+    id: S.nextId++, visible: true,
+    intro:     { type: 'none', duration: 0.5, delay: 0 },
+    keyframes: [],
+  });
+  S.elements.push(el);
+  renderLayerList();
+  selectEl(el.id);
+}
+
+function removeElement(id) {
+  // Find BEFORE filtering so we can clean up references
+  const elToRemove = S.elements.find(x => x.id === id);
+  S.elements = S.elements.filter(e => e.id !== id);
+  // Clean up per-element caches to prevent stale state and memory leaks
+  _particleState.delete(id);
+  _scrollState.delete(id);
+  if (S.selectedId === id) { S.selectedId = null; renderProps(null); }
+  renderLayerList();
+}
+
+function moveElement(id, dir) { // dir +1 = up in render order (renders on top), -1 = below
+  const idx = S.elements.findIndex(e => e.id === id);
+  const ni  = idx + dir;
+  if (ni < 0 || ni >= S.elements.length) return;
+  [S.elements[idx], S.elements[ni]] = [S.elements[ni], S.elements[idx]];
+  renderLayerList();
+}
+
+function selectEl(id) {
+  S.selectedId = id;
+  renderLayerList();
+  renderProps(S.elements.find(e => e.id === id) || null);
+}
+
+function renderLayerList() {
+  const list = document.getElementById('elementsList');
+  if (!S.elements.length) {
+    list.innerHTML = '<div class="elements-empty">Add elements above<br>to build your visualizer</div>';
+    return;
+  }
+  // Display reversed (top of list = top render layer)
+  list.innerHTML = [...S.elements].reverse().map((el, revIdx) => {
+    const realIdx = S.elements.length - 1 - revIdx;
+    const sel = el.id === S.selectedId;
+    const vis = el.visible !== false;
+    return `<div class="el-item ${sel?'selected':''}" data-id="${el.id}">
+      <div class="el-icon">${el.icon}</div>
+      <div class="el-name">${el.name}${(el.keyframes&&el.keyframes.length)?'<span style="font-size:8px;color:var(--accent);margin-left:4px">◆'+el.keyframes.length+'</span>':''}</div>
+      <div class="el-btns">
+        <button class="icob order" data-up="${el.id}" title="Move up">▲</button>
+        <button class="icob order" data-dn="${el.id}" title="Move down">▼</button>
+        <button class="icob" data-vis="${el.id}" title="Toggle visibility">${vis?'●':'○'}</button>
+        <button class="icob del" data-del="${el.id}" title="Delete">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.el-item').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.closest('[data-del],[data-vis],[data-up],[data-dn]')) return;
+      selectEl(parseInt(item.dataset.id));
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => removeElement(parseInt(b.dataset.del))));
+  list.querySelectorAll('[data-vis]').forEach(b => b.addEventListener('click', () => {
+    const el = S.elements.find(e => e.id === parseInt(b.dataset.vis));
+    if (el) { el.visible = el.visible === false; renderLayerList(); }
+  }));
+  list.querySelectorAll('[data-up]').forEach(b => b.addEventListener('click', () => moveElement(parseInt(b.dataset.up), +1)));
+  list.querySelectorAll('[data-dn]').forEach(b => b.addEventListener('click', () => moveElement(parseInt(b.dataset.dn), -1)));
+  if (window._updateOverlay) window._updateOverlay();
+}
+
+// ═══════════════════════════════════════════════════════
+// PROPERTIES PANEL
+// ═══════════════════════════════════════════════════════
+function renderProps(el) {
+  document.getElementById('noSel').style.display  = el ? 'none' : '';
+  document.getElementById('propsPane').style.display = el ? '' : 'none';
+  if (!el) return;
+  _pRangeUid = 0;  // reset uid counter for each fresh prop panel
+  const pp = document.getElementById('propsPane');
+  pp.innerHTML = buildPropsHTML(el);
+  bindProps(el, pp);
+}
+
+let _pRangeUid = 0;
+function pRange(prop, val, min, max, step, pct=false, unit='') {
+  const uid = 'pr' + (++_pRangeUid);
+  const mn  = pct ? +(min*100).toFixed(4) : min;
+  const mx  = pct ? +(max*100).toFixed(4) : max;
+  const st  = pct ? +((step||0.5)*100).toFixed(4) : (step||1);
+  const v   = pct ? +(val*100).toFixed(3) : val;
+  const suf = unit || (pct ? '%' : '');
+  return `<input type="range" class="pi" data-prop="${prop}" data-pct="${pct}" data-uid="${uid}"` +
+    ` min="${mn}" max="${mx}" step="${st}" value="${v}" style="flex:1">` +
+    `<input type="number" class="pi-num" data-propnum="${prop}" data-pct="${pct}" data-peer="${uid}"` +
+    ` min="${mn}" max="${mx}" step="${st}" value="${+v.toFixed(3)}" title="${suf}">`;
+}
+function pColor(prop, val) {
+  // Convert rgba/rgb to hex if possible, else use val directly if it's a hex, else default
+  let hex = '#5ae4d0';
+  if (val) {
+    if (/^#[0-9a-fA-F]{3,8}$/.test(val)) {
+      hex = val.slice(0, 7); // truncate to 6-digit if longer
+    } else {
+      // Try parsing rgba/rgb
+      const m = val.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+      if (m) hex = '#' + [m[1],m[2],m[3]].map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
+    }
+  }
+  return `<input type="color" class="pi" data-prop="${prop}" value="${hex}">`;
+}
+function pCheck(prop, val) { return `<input type="checkbox" class="pi" data-prop="${prop}" ${val?'checked':''}>` }
+function pText(prop, val)  { return `<input type="text" class="pi" data-prop="${prop}" value="${val||''}">` }
+function pRow(label, input) {
+  return '<div class="prop-row"><span class="prop-label">' + label + '</span>' + input + '</div>';
+}
+// Shorthand: pRng(label, prop, val, min, max, step, pct, unit)
+function pRng(label, prop, val, min, max, step, pct, unit) {
+  return pRow(label, pRange(prop, val, min, max, step, pct, unit));
+}
+function sel(prop, val, opts) {
+  var o = opts.map(function(x) {
+    return '<option value="' + x[0] + '"' + (val === x[0] ? ' selected' : '') + '>' + x[1] + '</option>';
+  }).join('');
+  return '<select class="pi" data-prop="' + prop + '">' + o + '</select>';
+}
+
+// Available fonts (loaded via Google Fonts in <head>)
+const TEXT_FONTS = [
+  'Syne', 'DM Sans', 'JetBrains Mono',
+  'Montserrat', 'Oswald', 'Bebas Neue', 'Raleway',
+  'Playfair Display', 'Dancing Script', 'Anton',
+  'Space Grotesk', 'Inter', 'Roboto Mono',
+];
+function buildPropsHTML(el) {
+  let h = '';
+
+  // Position & Size
+  h += `<div class="prop-group"><div class="sec-title">Position & Size</div>`;
+  h += pRow('X', pRange('x', el.x, 0, 1, 0.005, true));
+  h += pRow('Y', pRange('y', el.y, 0, 1, 0.005, true));
+  if ('width'  in el) h += pRow('Width',  pRange('width',  el.width,  0.05, 1, 0.005, true));
+  if ('height' in el && el.type !== 'progress') h += pRow('Height', pRange('height', el.height, 0.03, 0.8, 0.005, true));
+  if ('radius' in el) h += pRow('Radius', pRange('radius', el.radius, 0.02, 0.48, 0.005, true));
+  h += pRow('Opacity', pRange('opacity', el.opacity, 0, 1, 0.01));
+  h += '</div>';
+
+  // Audio Reactivity
+  if (el.type !== 'progress' && el.type !== 'text') {
+    h += `<div class="prop-group"><div class="sec-title">Audio Reactivity</div>`;
+    if ('sensitivity' in el) h += pRow('Sensitivity', pRange('sensitivity', el.sensitivity, 0.1, 4, 0.05));
+    if ('freqLow' in el)  h += `<div class="prop-row"><span class="prop-label">Freq Lo</span><input type="number" class="pi hz-input" data-prop="freqLow"  min="0"   max="20000" step="10" value="${el.freqLow  ?? 0}"    style="font-size:10.5px"> <span class="hz-unit">Hz</span></div>`;
+    if ('freqHigh' in el) h += `<div class="prop-row"><span class="prop-label">Freq Hi</span><input type="number" class="pi hz-input" data-prop="freqHigh" min="10"  max="20000" step="10" value="${el.freqHigh ?? 20000}" style="font-size:10.5px"> <span class="hz-unit">Hz</span></div>`;
+    h += '</div>';
+  }
+
+  // Type-specific
+  if (el.type === 'bars') {
+    h += `<div class="prop-group"><div class="sec-title">Bar Style</div>`;
+    h += pRng('Bar Count',  'barCount',    el.barCount    || 64,  8,    256,  1);
+    h += pRng('Spacing',    'barSpacing',  el.barSpacing  ?? 0.12, 0, 0.95, 0.01);
+    h += pRng('Thickness',  'barThickness',el.barThickness ?? 1.0, 0.05, 1, 0.01);
+    h += pRow('Top Color', pColor('colorTop', el.colorTop));
+    h += pRow('Bot Color', pColor('colorBottom', el.colorBottom));
+    h += pRow('Glow',    pCheck('glow',    el.glow));
+    h += pRow('Mirror',  pCheck('mirror',  el.mirror));
+    h += pRng('Rotation', 'rotation', el.rotation||0, -180, 180, 1);
+    h += pRow('Rounded', pCheck('rounded', el.rounded));
+    h += '</div>';
+  }
+  if (el.type === 'circular') {
+    h += `<div class="prop-group"><div class="sec-title">Circular Style</div>`;
+    h += pRow('Bar Count', pRange('bars', el.bars, 32, 512, 1));
+    h += pRow('Color',     pColor('colorTop', el.colorTop));
+    h += pRow('Glow',      pCheck('glow', el.glow));
+    h += '</div>';
+  }
+  if (el.type === 'waveform') {
+    h += `<div class="prop-group"><div class="sec-title">Waveform Style</div>`;
+    h += pRow('Color',      pColor('color', el.color));
+    h += pRow('Line Width', pRange('lineWidth', el.lineWidth, 0.5, 12, 0.5));
+    h += pRow('Fill',       pCheck('fill', el.fill));
+    h += '</div>';
+  }
+  if (el.type === 'progress') {
+    h += `<div class="prop-group"><div class="sec-title">Progress Bar</div>`;
+    h += pRow('Thickness', pRange('height', el.height, 0.002, 0.04, 0.001, true));
+    h += pRow('Fill Color', pColor('colorFill', el.colorFill));
+    h += pRow('BG Color',   pColor('colorBg',   el.colorBg));
+    h += pRow('Glow',       pCheck('glow', el.glow));
+    h += pRow('Show Time',  pCheck('showTime', el.showTime));
+    h += '</div>';
+  }
+  if (el.type === 'text') {
+    h += '<div class="prop-group"><div class="sec-title">Text</div>';
+    h += pRow('Content', pText('content', el.content));
+    h += pRow('Color',   pColor('color', el.color));
+    h += pRng('Size',    'fontSize', el.fontSize, 0.01, 0.2, 0.001, true);
+    h += pRow('Font',    sel('font', el.font || 'Syne', TEXT_FONTS.map(function(f){return[f,f];})));
+    h += pRow('Bold',    pCheck('bold',   el.bold));
+    h += pRow('Italic',  pCheck('italic', el.italic));
+    h += pRow('Shadow',  pCheck('shadow', el.shadow));
+    h += pRow('Align',   sel('align', el.align, [['left','Left'],['center','Center'],['right','Right']]));
+    h += '</div>';
+    h += '<div class="prop-group"><div class="sec-title">Outline / Stroke</div>';
+    h += pRow('Outline',  pCheck('outlineEnabled', el.outlineEnabled));
+    h += pRow('Color',    pColor('outlineColor',   el.outlineColor   || '#000000'));
+    h += pRng('Width',    'outlineWidth', el.outlineWidth || 2, 0.5, 20, 0.5);
+    h += '</div>';
+    h += '<div class="prop-group"><div class="sec-title">Scroll / Marquee</div>';
+    h += pRow('Scroll', pCheck('scroll', el.scroll));
+    h += pRng('Speed px/s', 'scrollSpeed', el.scrollSpeed || 40, 5, 300, 5);
+    h += pRng('Clip Width', 'scrollWidth', el.scrollWidth || 0.7, 0.1, 1, 0.01, true);
+    h += '</div>';
+    h += '<div class="prop-group"><div class="sec-title">Playlist (Now Playing)</div>';
+    h += '<div class="prop-row">' + pCheck('playlistMode', el.playlistMode)
+       + '<span style="font-size:10px;color:var(--dim);margin-left:6px">Auto-detect current track</span></div>';
+    var plSafe = (el.playlist || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    h += '<div class="prop-row" style="flex-direction:column;align-items:flex-start;gap:3px">'
+       + '<span class="pl" style="flex:none;margin-bottom:2px">Tracklist</span>'
+       + '<textarea class="pi" data-prop="playlist" style="width:100%;height:90px;resize:vertical;font-size:9px;line-height:1.45;padding:5px" placeholder="0:00 - Artist - Title">'
+       + plSafe + '</textarea></div>';
+    h += '<div class="prop-row" style="font-size:9px;color:var(--dim);line-height:1.5">Format: M:SS - Title &nbsp;|&nbsp; H:MM:SS - Title</div>';
+    h += '</div>';
+  }
+  if (el.type === 'energy') {
+    h += '<div class="prop-group"><div class="sec-title">Energy Style</div>';
+    h += pRow('Color',      pColor('color', el.color));
+    h += pRow('Color 2',    pColor('colorSecondary', el.colorSecondary));
+    h += pRow('Use Color 2', pCheck('useSecondary', el.useSecondary));
+    h += pRng('Ring Count',  'ringCount',    el.ringCount    ?? 3,   1,  8,  1);
+    h += pRng('Ring Width',  'ringThickness', el.ringThickness ?? 1.5, 0.5, 6, 0.5);
+    h += pRng('Pulse Speed', 'pulseSpeed',   el.pulseSpeed   ?? 0.85, 0.1, 3, 0.05);
+    h += pRow('Glow',        pCheck('glow', el.glow));
+    h += '</div>';
+  }
+  if (el.type === 'spectrum') {
+    h += `<div class="prop-group"><div class="sec-title">Spectrum Fill</div>`;
+    h += pRow('Top Color', pColor('colorTop', el.colorTop));
+    h += pRow('Bot Color', pColor('colorBottom', el.colorBottom));
+    h += pRow('Mirror',    pCheck('mirror', el.mirror));
+    h += pRow('Glow',      pCheck('glow', el.glow));
+    h += '</div>';
+  }
+  if (el.type === 'particles') {
+    h += '<div class="prop-group"><div class="sec-title">Particles</div>';
+    h += pRow('Color',       pColor('color',          el.color));
+    h += pRow('Color 2',     pColor('colorSecondary', el.colorSecondary));
+    h += pRng('Count',    'count',    el.count    ?? 120, 10,  600, 1);
+    h += pRng('Size Min', 'sizeMin',  el.sizeMin  ?? 1,   0.5, 20,  0.5);
+    h += pRng('Size Max', 'sizeMax',  el.sizeMax  ?? 4,   1,   40,  0.5);
+    h += pRng('Speed',    'speed',    el.speed    ?? 1,   0.1, 5,   0.1);
+    h += pRow('Rainbow',     pCheck('rainbow', el.rainbow));
+    h += pRow('Trail Fade',  pCheck('trail',   el.trail));
+    h += pRow('Burst Mode',  pCheck('burst',   el.burst));
+    h += pRow('Glow',        pCheck('glow',    el.glow));
+    h += '</div>';
+  }
+  if (el.type === 'image') {
+    h += '<div class="prop-group"><div class="sec-title">Image</div>';
+    h += pRow('Fit', sel('fit', el.fit, [['contain','Contain'],['cover','Cover'],['stretch','Stretch']]));
+    h += pRow('Rotation', pRange('rotation', el.rotation||0, -180, 180, 1));
+    h += '<div class="prop-row"><span class="prop-label">Image</span>'
+       + '<button class="btn" data-img-change="' + el.id + '" style="font-size:11px;padding:4px 9px;">Change...</button></div>';
+    h += '</div>';
+  }
+  // ── Intro Animation ─────────────────────────────────────────────
+  h += '<div class="prop-group"><div class="sec-title">Intro Animation</div>';
+  const introType = (el.intro && el.intro.type) || 'none';
+  h += pRow('Type', sel('intro.type', introType, [
+    ['none','None'], ['fade','Fade In'], ['slideUp','Slide Up'],
+    ['slideDown','Slide Down'], ['slideLeft','Slide Left'],
+    ['slideRight','Slide Right'], ['zoom','Zoom In'], ['blur','Blur In'],
+  ]));
+  if (introType !== 'none') {
+    h += pRng('Duration', 'intro.duration', (el.intro && el.intro.duration) || 0.5, 0.1, 5, 0.1);
+    h += pRng('Delay',    'intro.delay',    (el.intro && el.intro.delay)    || 0,   0,   10, 0.1);
+  }
+  h += '</div>';
+
+  // ── Keyframes ──────────────────────────────────────────────────
+  h += '<div class="prop-group"><div class="sec-title">Keyframes</div>';
+  const kfs = el.keyframes || [];
+  if (kfs.length === 0) {
+    h += '<div class="prop-row" style="font-size:10px;color:var(--dim)">No keyframes yet.</div>';
+  } else {
+    kfs.forEach((kf, ki) => {
+      const plist = Object.keys(kf.props).join(', ') || '—';
+      h += '<div class="prop-row kf-row" data-kfi="' + ki + '">' +
+           '<span class="prop-label" style="font-family:JetBrains Mono,mono;font-size:9.5px">' + fmt(kf.time) + '</span>' +
+           '<span style="flex:1;font-size:9px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + plist + '</span>' +
+           '<button class="icob del" data-kfdel="' + ki + '" style="flex-shrink:0">✕</button>' +
+           '</div>';
+    });
+  }
+  h += '<div class="prop-row" style="gap:5px">' +
+       '<button class="btn" id="btnAddKf" style="flex:1;font-size:10.5px;padding:4px 6px">+ Add Keyframe at current time</button>' +
+       (kfs.length > 0 ? '<button class="btn" id="btnClearKf" style="font-size:10.5px;padding:4px 8px;color:var(--red);border-color:var(--red)">Clear all</button>' : '') +
+       '</div>';
+  h += '<div class="prop-row" style="font-size:9px;color:var(--dim);line-height:1.5">' +
+       'Keyframes animate: x, y, opacity, width/height/radius, fontSize, barCount</div>';
+  h += '</div>';
+
+  return h;
+}
+
+function bindProps(el, container) {
+  // Build uid→range and uid→number maps for exact pairing (avoids querySelector collision)
+  const rangeByUid = {};
+  const numByUid   = {};
+  container.querySelectorAll('[data-uid]').forEach(r => { rangeByUid[r.dataset.uid] = r; });
+  container.querySelectorAll('[data-peer]').forEach(n => { numByUid[n.dataset.peer]  = n; });
+
+  container.querySelectorAll('[data-prop],[data-propnum]').forEach(inp => {
+    const prop = inp.dataset.prop || inp.dataset.propnum;
+    const pct  = inp.dataset.pct === 'true';
+
+    if (inp.type === 'range' && inp.dataset.uid) {
+      // Range slider — sync to its exact paired number input via uid
+      const numInp = numByUid[inp.dataset.uid];
+      inp.addEventListener('input', () => {
+        const raw = parseFloat(inp.value);
+        el[prop] = pct ? raw / 100 : raw;
+        if (numInp) numInp.value = +raw.toFixed(3);
+      });
+
+    } else if (inp.dataset.peer) {
+      // Number companion — sync to its exact paired range via peer uid
+      const rangeInp = rangeByUid[inp.dataset.peer];
+      inp.addEventListener('change', () => {
+        const mn = parseFloat(inp.min), mx = parseFloat(inp.max);
+        const st2 = parseFloat(inp.step) || 1;
+        let v = Math.max(mn, Math.min(mx, parseFloat(inp.value) || mn));
+        v = Math.round(v / st2) * st2;
+        inp.value = +v.toFixed(5);
+        if (rangeInp) rangeInp.value = v;
+        el[inp.dataset.propnum] = pct ? v / 100 : v;
+      });
+
+    } else if (inp.type === 'checkbox') {
+      inp.addEventListener('input', () => { el[prop] = inp.checked; });
+
+    } else if (inp.type === 'number') {
+      // Standalone number (Hz inputs, etc.) — not paired with a range
+      inp.addEventListener('input', () => { el[prop] = parseFloat(inp.value) || 0; });
+
+    } else if (inp.type === 'color' || inp.type === 'text' || inp.tagName === 'TEXTAREA') {
+      inp.addEventListener('input', () => { el[prop] = inp.value; });
+    }
+
+    inp.addEventListener('change', () => {
+      if (inp.tagName === 'SELECT') el[prop] = inp.value;
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// FREQUENCY HELPER — per-element freq range + sensitivity
+// ═══════════════════════════════════════════════════════
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// Cached per-frame constants to avoid recomputing inside hot loops
+let _nyq = 22050, _arrLen = 1024;
+function freqAt(norm, el, smoothedArr) {
+  const arr  = smoothedArr || S.smoothed;
+  if (!arr) return 0;
+  const lo  = Math.max(0, (el.freqLow  ?? 0)     / _nyq);
+  const hi  = Math.min(1, (el.freqHigh ?? 20000)  / _nyq);
+  const pos = lo + norm * (hi - lo);
+  const i   = Math.floor(Math.pow(pos, 1.35) * arr.length * 0.65);
+  return Math.min(1, (arr[i < 0 ? 0 : i >= arr.length ? arr.length-1 : i] || 0) * (el.sensitivity ?? 1));
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER FRAME (shared between live + export)
+// ═══════════════════════════════════════════════════════
+// Memoised background grid canvas — only redrawn when size changes
+const _bgCache = { canvas: null, w: 0, h: 0 };
+function _getBgCanvas(w, h) {
+  if (_bgCache.canvas && _bgCache.w === w && _bgCache.h === h) return _bgCache.canvas;
+  const oc  = new OffscreenCanvas(w, h);
+  const ocx2 = oc.getContext('2d');
+  ocx2.fillStyle = '#080a10';
+  ocx2.fillRect(0, 0, w, h);
+  ocx2.strokeStyle = 'rgba(255,255,255,0.025)';
+  ocx2.lineWidth = 1;
+  // One combined path for all grid lines — much faster than per-line
+  ocx2.beginPath();
+  for (let x = 0; x <= w; x += 80) { ocx2.moveTo(x, 0); ocx2.lineTo(x, h); }
+  for (let y = 0; y <= h; y += 80) { ocx2.moveTo(0, y); ocx2.lineTo(w, y); }
+  ocx2.stroke();
+  _bgCache.canvas = oc; _bgCache.w = w; _bgCache.h = h;
+  return oc;
+}
+
+function renderFrame(cw, ch, smoothed, smoothedWave, time) {
+  ctx.clearRect(0, 0, cw, ch);
+
+  // Background
+  if (S.bgMode === 'image' && S.bgImage) {
+    const img = S.bgImage;
+    const fit = S.bgImageFit || 'cover';
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    if (fit === 'stretch' || !iw || !ih) {
+      ctx.drawImage(img, 0, 0, cw, ch);
+    } else if (fit === 'tile') {
+      const pat = ctx.createPattern(img, 'repeat');
+      ctx.fillStyle = pat; ctx.fillRect(0, 0, cw, ch);
+    } else if (fit === 'contain') {
+      const sc = Math.min(cw / iw, ch / ih);
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(img, (cw - iw*sc)/2, (ch - ih*sc)/2, iw*sc, ih*sc);
+    } else {
+      // cover (default)
+      const sc = Math.max(cw / iw, ch / ih);
+      ctx.drawImage(img, (cw - iw*sc)/2, (ch - ih*sc)/2, iw*sc, ih*sc);
+    }
+  } else if (S.bgMode === 'solid') {
+    ctx.fillStyle = S.bgColor || '#07080e';
+    ctx.fillRect(0, 0, cw, ch);
+  } else if (S.bgMode === 'gradient') {
+    const g2 = S.bgGradient || { a:'#1a0533', b:'#0a1a3a', angle:135 };
+    const angleRad = (g2.angle || 135) * Math.PI / 180;
+    const cx2 = cw / 2, cy2 = ch / 2;
+    const len  = Math.sqrt(cw * cw + ch * ch) / 2;
+    const grd  = ctx.createLinearGradient(
+      cx2 - Math.cos(angleRad) * len, cy2 - Math.sin(angleRad) * len,
+      cx2 + Math.cos(angleRad) * len, cy2 + Math.sin(angleRad) * len
+    );
+    grd.addColorStop(0, g2.a || '#1a0533');
+    grd.addColorStop(1, g2.b || '#0a1a3a');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, cw, ch);
+  } else {
+    // Default dark grid background
+    ctx.drawImage(_getBgCanvas(cw, ch), 0, 0);
+  }
+
+  for (let _ei = 0; _ei < S.elements.length; _ei++) {
+    const el = S.elements[_ei];
+    if (el.visible === false) continue;
+    // Apply keyframe interpolation
+    const elT = time !== undefined ? getElAtTime(el, time) : el;
+    const opBase = elT.opacity > 0 ? (elT.opacity < 1 ? elT.opacity : 1) : 0;
+    ctx.save();
+    ctx.globalAlpha = opBase;
+    // Apply intro animation (may further modify globalAlpha / transform)
+    applyIntro(el, time || 0);
+    switch (elT.type) {
+      case 'bars':     drawBars(elT, cw, ch, smoothed);        break;
+      case 'circular': drawCircular(elT, cw, ch, smoothed);    break;
+      case 'waveform': drawWaveform(elT, cw, ch, smoothedWave);break;
+      case 'progress': drawProgress(elT, cw, ch, time);        break;
+      case 'text':     drawText(elT, cw, ch);                  break;
+      case 'energy':   drawEnergy(elT, cw, ch, smoothed);      break;
+      case 'spectrum': drawSpectrum(elT, cw, ch, smoothed);    break;
+      case 'particles':drawParticles(elT, cw, ch, smoothed);   break;
+      case 'image':    drawImage(elT, cw, ch);                 break;
+    }
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// LIVE RENDER LOOP
+// ═══════════════════════════════════════════════════════
+function renderLoop() {
+  requestAnimationFrame(renderLoop);
+
+  if (S.analyser && S.freqData) {
+    S.analyser.getByteFrequencyData(S.freqData);
+    S.analyser.getByteTimeDomainData(S.waveData);
+    _nyq   = S.audioCtx ? S.audioCtx.sampleRate / 2 : 22050;
+    _arrLen = S.smoothed ? S.smoothed.length : 1024;
+    const alpha = 1 - G.smoothness;
+    const fd = S.freqData, sm = S.smoothed, wd = S.waveData, sw = S.smoothedWave;
+    for (let i = 0; i < sm.length; i++)
+      sm[i] = sm[i] + alpha * (fd[i] / 255 - sm[i]);
+    for (let i = 0; i < sw.length; i++)
+      sw[i] = sw[i] + alpha * (wd[i] / 128 - 1 - sw[i]);
+  }
+
+  renderFrame(canvas.width, canvas.height, S.smoothed, S.smoothedWave, currentTime());
+
+  // Update seek UI
+  if (S.audioBuffer) {
+    const t   = currentTime();
+    const pct = Math.min(1, t / S.duration);
+    document.getElementById('seekFill').style.width = (pct * 100) + '%';
+    document.getElementById('seekThumb').style.left  = (pct * 100) + '%';
+    document.getElementById('timeNow').textContent   = fmt(t);
+  }
+
+
+}
+// ═══════════════════════════════════════════════════════
+// ELEMENT DRAWERS
+// ═══════════════════════════════════════════════════════
+function drawBars(el, cw, ch, sm) {
+  const ex = el.x * cw, ey = el.y * ch;
+  const ew = el.width * cw, eh = el.height * ch;
+  // Rotation around the centre of the bar element
+  const rot = (el.rotation || 0) * Math.PI / 180;
+  if (rot) {
+    ctx.save();
+    ctx.translate(ex, ey - eh / 2);
+    ctx.rotate(rot);
+    ctx.translate(-ex, -(ey - eh / 2));
+  }
+  const n   = el.barCount || 64;
+  const tot = el.mirror ? n * 2 : n;
+  const bw  = ew / tot;
+  // barSpacing: fraction of slot used as gap (0=no gap, 0.5=half gap)
+  const spacing  = Math.max(0, Math.min(0.95, el.barSpacing  ?? 0.12));
+  const thickness = Math.max(0.05, Math.min(1, el.barThickness ?? 1.0));
+  const gap = Math.max(0.5, bw * spacing);
+  const bwg = Math.max(0, (bw - gap) * thickness);
+  // Centre the bar within its slot when thickness < 1
+  const bOff = (bw - gap - bwg) / 2;
+  const r   = el.rounded ? Math.min(bwg / 2 * 0.8, 8) : 0;
+
+  // One gradient covering full possible height — reused for every bar
+  const grad = ctx.createLinearGradient(0, ey, 0, ey - eh);
+  grad.addColorStop(0, el.colorBottom || '#000000');
+  grad.addColorStop(1, el.colorTop    || '#5ae4d0');
+  ctx.fillStyle = grad;
+
+  // Batch all rectangles into a single path, then fill once
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const barH = Math.max(2, freqAt(i / n, el, sm) * eh);
+    if (el.mirror) {
+      addRectPath(ex + ew/2 + i*bw + gap/2 + bOff,       ey - barH, bwg, barH, r);
+      addRectPath(ex + ew/2 - (i+1)*bw + gap/2 + bOff,   ey - barH, bwg, barH, r);
+    } else {
+      addRectPath(ex + i*bw + gap/2 + bOff, ey - barH, bwg, barH, r);
+    }
+  }
+  ctx.fill();
+
+  // Glow: draw a second pass with shadow only (shadow on a single fill is much faster)
+  if (el.glow) {
+    ctx.save();
+    ctx.shadowBlur   = 14;
+    ctx.shadowColor  = el.colorTop || '#5ae4d0';
+    ctx.globalAlpha  = 0.45;
+    ctx.fill();  // re-fill same path (still current) with shadow
+    ctx.restore();
+  }
+  if (rot) ctx.restore();
+}
+
+// Add a rounded-rect subpath to current path (no fill/stroke — caller fills once)
+function addRectPath(x, y, w, h, r) {
+  if (w <= 0 || h <= 0) return;
+  if (r <= 0) { ctx.rect(x, y, w, h); return; }
+  // Only round the TOP two corners — bars grow upward from flat base
+  r = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + r, y);            // top-left after corner
+  ctx.lineTo(x + w - r, y);        // top edge
+  ctx.arcTo(x + w, y, x + w, y + r, r);  // top-right corner
+  ctx.lineTo(x + w, y + h);        // right edge — straight to bottom
+  ctx.lineTo(x, y + h);            // bottom edge — straight
+  ctx.lineTo(x, y + r);            // left edge
+  ctx.arcTo(x, y, x + r, y, r);   // top-left corner
+  ctx.closePath();
+}
+
+// fillRR removed — replaced by addRectPath batching
+
+function drawCircular(el, cw, ch, sm) {
+  const ocx = el.x * cw, ocy = el.y * ch;
+  const r   = el.radius * Math.min(cw, ch);
+  const n   = el.bars || 128;
+  const maxH = r * 0.85;
+  const col  = el.colorTop || '#f5a623';
+
+  // Inner ring
+  ctx.beginPath(); ctx.arc(ocx, ocy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = col + '44'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Cache cos/sin and barH values
+  const lineW = Math.max(1.5, (Math.PI * 2 * r / n) * 0.6);
+  ctx.lineWidth = lineW; ctx.lineCap = 'round'; ctx.strokeStyle = col;
+
+  // Draw all lines in a single beginPath for browsers that support it.
+  // Each "line" is a moveTo+lineTo pair; all stroked at once.
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    const val   = freqAt(i / n, el, sm);
+    const barH  = Math.max(2, val * maxH);
+    const cos   = Math.cos(angle), sin = Math.sin(angle);
+    ctx.moveTo(ocx + cos * r, ocy + sin * r);
+    ctx.lineTo(ocx + cos * (r + barH), ocy + sin * (r + barH));
+  }
+  ctx.stroke();
+
+  if (el.glow) {
+    ctx.save();
+    ctx.shadowBlur = 14; ctx.shadowColor = col;
+    ctx.globalAlpha = 0.5;
+    ctx.stroke(); // re-stroke same path for glow
+    ctx.restore();
+  }
+}
+
+function drawWaveform(el, cw, ch, sw) {
+  const ex = el.x * cw, ey = el.y * ch;
+  const ew = el.width * cw, eh = el.height * ch;
+  if (!sw || !sw.length) return;
+  const sens  = el.sensitivity ?? 1;
+  const col   = el.color || '#5ae4d0';
+  const step  = Math.max(1, Math.round(ew / 512));
+  const ratio = sw.length / ew;
+
+  // Build point array once, reuse for stroke + optional fill
+  const pts = [];
+  for (let x = 0; x <= ew; x += step) {
+    const idx = Math.min(sw.length - 1, Math.floor(x * ratio));
+    // Waveform is centred on ey; data oscillates ±1 so scale by eh/2
+    const py  = ey + Math.max(-eh / 2, Math.min(eh / 2, (sw[idx] || 0) * eh * sens));
+    pts.push(ex + x, py);
+  }
+
+  // Stroke — just the line
+  ctx.lineWidth = el.lineWidth || 2; ctx.lineJoin = 'round'; ctx.strokeStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i+1]);
+  ctx.stroke();
+
+  // Fill — rebuild path + close back to centre line
+  if (el.fill) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i+1]);
+    // Close back along the centre line
+    ctx.lineTo(pts[pts.length - 2], ey);
+    ctx.lineTo(pts[0], ey);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, ey - eh / 2, 0, ey + eh / 2);
+    grad.addColorStop(0, col + 'bb'); grad.addColorStop(1, col + '11');
+    ctx.fillStyle = grad; ctx.fill();
+  }
+}
+
+function drawProgress(el, cw, ch, time) {
+  const ex  = el.x * cw, ey = el.y * ch;
+  const ew  = el.width * cw;
+  const eh  = Math.max(2, el.height * ch);
+  const pct = S.duration > 0 ? Math.min(1, (time ?? 0) / S.duration) : 0;
+  const rad = eh / 2;
+  // Track background — MUST call beginPath before roundRect (native API doesn't clear path)
+  ctx.beginPath();
+  ctx.fillStyle = el.colorBg || '#1a1a2a';
+  ctx.roundRect(ex, ey - rad, ew, eh, rad);
+  ctx.fill();
+  // Fill bar
+  ctx.shadowBlur = 0; // always reset before conditionally setting
+  if (pct > 0.001) {
+    if (el.glow) { ctx.shadowBlur = 12; ctx.shadowColor = el.colorFill; }
+    ctx.beginPath();
+    ctx.fillStyle = el.colorFill || '#5ae4d0';
+    ctx.roundRect(ex, ey - rad, ew * pct, eh, rad);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Knob
+    ctx.beginPath();
+    ctx.arc(ex + ew * pct, ey, eh * 1.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+  if (el.showTime && S.duration > 0) {
+    const ts = ch * 0.015;
+    ctx.font = ts + 'px "JetBrains Mono", monospace';
+    ctx.fillStyle    = 'rgba(255,255,255,0.6)';
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign    = 'left';
+    ctx.fillText(fmt(time ?? 0), ex, ey - rad - ch * 0.007);
+    ctx.textAlign = 'right';
+    ctx.fillText(fmt(S.duration), ex + ew, ey - rad - ch * 0.007);
+  }
+}
+
+// Scroll state per text element: { offset, lastTime }
+const _scrollState = new Map();
+
+function getPlaylistTrack(el) {
+  // Parse tracklist format: "M:SS - Artist - Title" or "H:MM:SS - ..."
+  if (!el.playlist || !el.playlistMode) return null;
+  const lines = el.playlist.split('\n').map(l => l.trim()).filter(Boolean);
+  const t = nowPlayTime(); // current playback time in seconds
+  let current = null;
+  for (const line of lines) {
+    // Match timestamp at start: "0:00", "1:23", "12:34", "1:23:45"
+    const m = line.match(/^(\d+):(\d{2})(?::(\d{2}))?\s*[-–]\s*(.+)$/);
+    if (!m) continue;
+    const h = m[3] !== undefined ? parseInt(m[1]) : 0;
+    const mm = m[3] !== undefined ? parseInt(m[2]) : parseInt(m[1]);
+    const ss = m[3] !== undefined ? parseInt(m[3]) : parseInt(m[2]);
+    const trackSec = h * 3600 + mm * 60 + ss;
+    if (trackSec <= t) current = m[4].trim();
+  }
+  return current;
+}
+
+function nowPlayTime() {
+  // During fast export S._exportTime holds the current frame's time.
+  // This makes playlist track detection work correctly in exported video.
+  if (S._exportTime !== null) return S._exportTime;
+  if (!S.audioCtx) return 0;
+  return S.isPlaying ? Math.max(0, S.audioCtx.currentTime - S.startTime) : S.pauseOffset;
+}
+
+
+
+// One global scroll ticker — only ONE text element scrolls at a time
+// (whichever has scroll:true; if multiple do, each has its own _scrollState entry
+//  but we ensure smooth single-pass rendering per element)
+function drawText(el, cw, ch) {
+  const fs      = el.fontSize * ch;
+  const fontFam = el.font || 'Syne';
+  const weight  = el.bold   ? '700' : '400';
+  const style   = el.italic ? 'italic ' : '';
+  ctx.font         = style + weight + ' ' + fs + 'px "' + fontFam + '", sans-serif';
+  ctx.textAlign    = el.align || 'center';
+  ctx.textBaseline = 'middle';
+
+  // Resolve content
+  let text = el.content || '';
+  if (el.playlistMode && el.playlist) {
+    const track = getPlaylistTrack(el);
+    if (track !== null) text = track;
+  }
+
+  const tx = el.x * cw, ty = el.y * ch;
+
+  // Helper: draw text with optional shadow + outline at (x, y)
+  function paintText(t, x, y) {
+    if (el.outlineEnabled && el.outlineWidth > 0) {
+      ctx.lineWidth   = el.outlineWidth * (cw / 1920) * 2;
+      ctx.strokeStyle = el.outlineColor || '#000000';
+      ctx.lineJoin    = 'round';
+      ctx.strokeText(t, x, y);
+    }
+    if (el.shadow) {
+      ctx.shadowBlur  = fs * 0.3;
+      ctx.shadowColor = 'rgba(0,0,0,0.75)';
+    }
+    ctx.fillStyle = el.color || '#ffffff';
+    ctx.fillText(t, x, y);
+    ctx.shadowBlur = 0;
+  }
+
+  if (el.scroll && text) {
+    const maxW   = (el.scrollWidth || 0.7) * cw;
+    const gap    = fs * 3; // gap between repetitions
+    // measure ONCE — result changes only if text or font changes
+    const textW  = ctx.measureText(text).width + gap;
+
+    if (!_scrollState.has(el.id)) {
+      _scrollState.set(el.id, { offset: 0, lastT: performance.now() });
+    }
+    const st      = _scrollState.get(el.id);
+    const now2    = performance.now();
+    const dt      = Math.min((now2 - st.lastT) / 1000, 0.1); // cap dt to avoid jump on tab return
+    st.lastT      = now2;
+    const pxPerSec = (el.scrollSpeed || 40) * (cw / 1920);
+    st.offset     = (st.offset + pxPerSec * dt) % textW;
+
+    // Clip region starts at the anchor X
+    const clipX = el.align === 'center' ? tx - maxW / 2
+                : el.align === 'right'  ? tx - maxW
+                : tx;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(clipX, ty - fs * 0.75, maxW, fs * 1.5);
+    ctx.clip();
+
+    // Draw enough copies to fill the clip region seamlessly (usually 2)
+    ctx.textAlign = 'left';
+    const startX  = clipX - st.offset;
+    const copies  = Math.ceil(maxW / textW) + 1;
+    for (let ci = 0; ci <= copies; ci++) {
+      paintText(text, startX + ci * textW, ty);
+    }
+    ctx.restore();
+  } else {
+    paintText(text, tx, ty);
+  }
+}
+
+function drawEnergy(el, cw, ch, sm) {
+  const ocx  = el.x * cw, ocy = el.y * ch;
+  const r    = el.radius * Math.min(cw, ch);
+  const rings      = el.ringCount     ?? 3;
+  const rThick     = el.ringThickness ?? 1.5;
+  const pulseSpeed = el.pulseSpeed    ?? 0.85;
+  const col  = el.color || '#5ae4d0';
+  const col2 = (el.useSecondary && el.colorSecondary) ? el.colorSecondary : col;
+
+  let bass = 0;
+  if (sm) {
+    const n = Math.max(1, Math.floor(sm.length * 0.06));
+    for (let i = 0; i < n; i++) bass += sm[i];
+    bass /= n;
+  }
+  bass = Math.min(1, bass * (el.sensitivity ?? 1));
+  const pulse = 1 + bass * pulseSpeed;
+
+  // Rings — each a separate stroke for correct layering
+  ctx.lineWidth = rThick;
+  for (let ring = rings; ring >= 1; ring--) {
+    const rr   = r * pulse * (1 + ring * (0.35 * (3 / rings)));
+    const t    = ring / rings; // 0→inner, 1→outer
+    const a    = Math.round(bass * 90 / ring).toString(16).padStart(2, '0');
+    const ringCol = el.useSecondary
+      ? lerpColor(col, col2, t)
+      : col;
+    ctx.beginPath();
+    ctx.arc(ocx, ocy, rr, 0, 6.2832);
+    ctx.strokeStyle = ringCol + a;
+    ctx.stroke();
+  }
+
+  // Core radial gradient fill
+  const grad = ctx.createRadialGradient(ocx, ocy, 0, ocx, ocy, r * pulse);
+  grad.addColorStop(0,   col  + 'ff');
+  grad.addColorStop(0.4, col2 + '88');
+  grad.addColorStop(1,   col2 + '00');
+
+  if (el.glow) { ctx.shadowBlur = r * bass * 2.5; ctx.shadowColor = col; }
+  ctx.beginPath();
+  ctx.arc(ocx, ocy, r * pulse, 0, 6.2832);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// Interpolate two hex colours
+function lerpColor(a, b, t) {
+  const ah = a.replace('#',''), bh = b.replace('#','');
+  if (ah.length < 6 || bh.length < 6) return a;
+  const ar = parseInt(ah.slice(0,2),16), ag = parseInt(ah.slice(2,4),16), ab2 = parseInt(ah.slice(4,6),16);
+  const br = parseInt(bh.slice(0,2),16), bg = parseInt(bh.slice(2,4),16), bb2 = parseInt(bh.slice(4,6),16);
+  const r2 = Math.round(ar + (br-ar)*t).toString(16).padStart(2,'0');
+  const g2 = Math.round(ag + (bg-ag)*t).toString(16).padStart(2,'0');
+  const b3 = Math.round(ab2+ (bb2-ab2)*t).toString(16).padStart(2,'0');
+  return '#' + r2 + g2 + b3;
+}
+
+
+function drawSpectrum(el, cw, ch, sm) {
+  const ex = el.x * cw, ey = el.y * ch;
+  const ew = el.width * cw, eh = el.height * ch;
+  const n   = 128; // reduced from 256 — imperceptible at canvas scale
+  const col = el.colorTop || '#5ae4d0';
+  const grad = ctx.createLinearGradient(0, ey - eh, 0, ey);
+  grad.addColorStop(0, col);
+  grad.addColorStop(1, el.colorBottom || 'rgba(90,228,208,0)');
+
+  const sides = el.mirror ? 2 : 1;
+  for (let side = 0; side < sides; side++) {
+    let startX, dir, spanW;
+    if (el.mirror) {
+      // Mirror: each side draws half-width from centre
+      startX = ex + ew / 2;
+      dir    = side === 0 ? 1 : -1;
+      spanW  = ew / 2;
+    } else {
+      // No mirror: single side fills full width left→right
+      startX = ex;
+      dir    = 1;
+      spanW  = ew;
+    }
+    // Fill path
+    ctx.beginPath();
+    ctx.moveTo(startX, ey);
+    for (let i = 0; i <= n; i++) {
+      const norm = i / n;
+      const barH = freqAt(norm, el, sm) * eh;
+      ctx.lineTo(startX + dir * norm * spanW, ey - barH);
+    }
+    ctx.lineTo(startX + dir * spanW, ey);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Top line
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const norm = i / n;
+      const barH = freqAt(norm, el, sm) * eh;
+      const bx = startX + dir * norm * spanW;
+      i === 0 ? ctx.moveTo(bx, ey - barH) : ctx.lineTo(bx, ey - barH);
+    }
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+  }
+  if (el.glow) {
+    ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = col; ctx.globalAlpha = 0.4; ctx.stroke(); ctx.restore();
+  }
+}
+
+// Particle system — Float32Array layout per particle (8 floats):
+// [x, y, vx, vy, life, hue, age, maxAge]
+const _particleState = new Map();
+function drawParticles(el, cw, ch, sm) {
+  const id   = el.id;
+  const cnt  = el.count || 120;
+  const STRIDE = 8;
+  if (!_particleState.has(id) || _particleState.get(id).length !== cnt * STRIDE) {
+    const buf = new Float32Array(cnt * STRIDE);
+    for (let i = 0; i < cnt; i++) {
+      const o = i * STRIDE;
+      buf[o+0] = Math.random(); buf[o+1] = Math.random();   // x, y
+      buf[o+2] = (Math.random()-.5)*0.002; buf[o+3] = (Math.random()-.5)*0.002; // vx, vy
+      buf[o+4] = Math.random();             // life (size variation)
+      buf[o+5] = Math.random() * 360;       // hue (for rainbow mode)
+      buf[o+6] = Math.random() * 100;       // age
+      buf[o+7] = 60 + Math.random() * 80;  // maxAge
+    }
+    _particleState.set(id, buf);
+  }
+  const buf  = _particleState.get(id);
+  const ex   = el.x * cw - (el.width||0.9)*cw/2;
+  const ey   = el.y * ch - (el.height||0.7)*ch/2;
+  const ew2  = (el.width||0.9)*cw, eh2 = (el.height||0.7)*ch;
+  const sens = el.sensitivity || 1;
+  const spd  = el.speed || 1;
+  const szMn = el.sizeMin ?? 1;
+  const szMx = el.sizeMax ?? 4;
+  const col  = el.color || '#5ae4d0';
+  const col2 = el.colorSecondary || '#f5a623';
+
+  let energy = 0;
+  if (sm) {
+    const lim = Math.min(40, sm.length);
+    for (let i = 0; i < lim; i++) energy += sm[i];
+    energy = Math.min(1, energy / lim * sens);
+  }
+  const speedMul = spd * (1 + energy * 5);
+
+  if (el.glow) { ctx.shadowBlur = 6; ctx.shadowColor = col; }
+
+  // When rainbow=false, batch all into one fill; when rainbow=true, draw per-particle
+  if (!el.rainbow) {
+    const alpha = 0.25 + energy * 0.75;
+    ctx.fillStyle = col + Math.round(alpha * 255).toString(16).padStart(2, '0');
+    ctx.beginPath();
+  }
+
+  for (let i = 0; i < cnt; i++) {
+    const o = i * STRIDE;
+    buf[o+0] += buf[o+2] * speedMul;
+    buf[o+1] += buf[o+3] * speedMul;
+    buf[o+6]++;
+
+    // Burst mode: respawn at centre on beat
+    if (el.burst && energy > 0.6 && Math.random() < energy * 0.15) {
+      buf[o+0] = 0.5; buf[o+1] = 0.5;
+      const angle = Math.random() * 6.2832;
+      const spd2  = 0.003 + Math.random() * 0.005;
+      buf[o+2] = Math.cos(angle) * spd2; buf[o+3] = Math.sin(angle) * spd2;
+      buf[o+6] = 0;
+    }
+
+    // Wrap or respawn
+    if (buf[o+0] < 0 || buf[o+0] > 1 || buf[o+1] < 0 || buf[o+1] > 1 || buf[o+6] > buf[o+7]) {
+      buf[o+0] = Math.random(); buf[o+1] = Math.random();
+      buf[o+2] = (Math.random()-.5)*0.002*spd; buf[o+3] = (Math.random()-.5)*0.002*spd;
+      buf[o+5] = Math.random() * 360;
+      buf[o+6] = 0; buf[o+7] = 60 + Math.random() * 80;
+    }
+
+    const ageRatio = buf[o+6] / buf[o+7]; // 0=new, 1=old
+    const sz = szMn + (szMx - szMn) * (0.5 + buf[o+4] * 0.5) * (1 + energy * 1.5) * (el.trail ? (1 - ageRatio * 0.7) : 1);
+    const px = ex + buf[o+0] * ew2, py = ey + buf[o+1] * eh2;
+
+    if (el.rainbow) {
+      buf[o+5] = (buf[o+5] + 0.5) % 360;
+      const alpha2 = (0.4 + energy * 0.6) * (el.trail ? (1 - ageRatio * 0.8) : 1);
+      ctx.beginPath();
+      ctx.arc(px, py, Math.max(0.5, sz), 0, 6.2832);
+      ctx.fillStyle = 'hsla(' + buf[o+5] + ',90%,65%,' + alpha2 + ')';
+      ctx.fill();
+    } else {
+      ctx.moveTo(px + sz, py);
+      ctx.arc(px, py, Math.max(0.5, sz), 0, 6.2832);
+    }
+  }
+
+  if (!el.rainbow) ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function drawImage(el, cw, ch) {
+  const img = el._img;
+  if (!img || !img.complete || !img.naturalWidth) return;
+  const ocx = el.x * cw, ocy = el.y * ch;
+  const ew2 = el.width * cw, eh2 = el.height * ch;
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  ctx.save();
+  ctx.translate(ocx, ocy);
+  if (el.rotation) ctx.rotate(el.rotation * Math.PI / 180);
+  if (el.fit === 'stretch') {
+    ctx.drawImage(img, -ew2/2, -eh2/2, ew2, eh2);
+  } else if (el.fit === 'contain') {
+    const s = Math.min(ew2/iw, eh2/ih);
+    ctx.drawImage(img, -iw*s/2, -ih*s/2, iw*s, ih*s);
+  } else {
+    const sc = Math.max(ew2/iw, eh2/ih);
+    ctx.save(); ctx.beginPath(); ctx.rect(-ew2/2, -eh2/2, ew2, eh2); ctx.clip();
+    ctx.drawImage(img, -iw*sc/2, -ih*sc/2, iw*sc, ih*sc);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+
+
+
+// ═══════════════════════════════════════════════════════
+// FAST EXPORT FFT
+// ═══════════════════════════════════════════════════════
+function computeFFT(pcm, offset, size) {
+  const re = new Float32Array(size);
+  const im = new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    const w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (size - 1)));
+    re[i] = (pcm[offset + i] || 0) * w;
+  }
+  // Bit reversal
+  let j = 0;
+  for (let i = 1; i < size; i++) {
+    let bit = size >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t=re[i]; re[i]=re[j]; re[j]=t; t=im[i]; im[i]=im[j]; im[j]=t; }
+  }
+  // FFT butterfly
+  for (let len = 2; len <= size; len <<= 1) {
+    const ang = -2 * Math.PI / len;
+    const wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < size; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < (len >> 1); k++) {
+        const ar = re[i+k], ai = im[i+k];
+        const br = re[i+k+(len>>1)] * cr - im[i+k+(len>>1)] * ci;
+        const bi = re[i+k+(len>>1)] * ci + im[i+k+(len>>1)] * cr;
+        re[i+k] = ar + br; im[i+k] = ai + bi;
+        re[i+k+(len>>1)] = ar - br; im[i+k+(len>>1)] = ai - bi;
+        const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+      }
+    }
+  }
+  const bins = size >> 1;
+  const mag  = new Uint8Array(bins);
+  for (let k = 0; k < bins; k++) {
+    const m  = Math.sqrt(re[k]*re[k] + im[k]*im[k]) / size;
+    const db = 20 * Math.log10(Math.max(m, 1e-10));
+    mag[k]   = Math.max(0, Math.min(255, Math.round((db + 100) / 100 * 255)));
+  }
+  return mag;
+}
+
+// ═══════════════════════════════════════════════════════
+// FAST EXPORT (WebCodecs + OfflineAudioContext + manual FFT)
+// ═══════════════════════════════════════════════════════
+async function loadWebMMuxer() {
+  if (window.WebMMuxer) return window.WebMMuxer;
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/webm-muxer@3/build/webm-muxer.min.js';
+    s.onload  = () => resolve(window.WebMMuxer || null);
+    s.onerror = () => resolve(null);
+    document.head.appendChild(s);
+  });
+  container.querySelectorAll('[data-img-change]').forEach(b => {
+    b.addEventListener('click', () => {
+      document.getElementById('imageInput').dataset.repId = b.dataset.imgChange;
+      document.getElementById('imageInput').click();
+    });
+  });
+
+
+  // Intro nested-prop bindings (prop names like "intro.type", "intro.duration")
+  container.querySelectorAll('[data-prop^="intro."]').forEach(inp => {
+    const subKey = inp.dataset.prop.slice(6); // e.g. "type", "duration"
+    if (!el.intro) el.intro = { type: 'none', duration: 0.5, delay: 0 };
+    if (inp.tagName === 'SELECT') {
+      inp.addEventListener('change', () => {
+        el.intro[subKey] = inp.value;
+        renderProps(el);
+      });
+    } else {
+      inp.addEventListener('input', () => {
+        el.intro[subKey] = inp.type === 'range' ? parseFloat(inp.value) : inp.value;
+      });
+    }
+  });
+  container.querySelectorAll('[data-peer]').forEach(numInp => {
+    if (!numInp.dataset.peer) return;
+    const rangeInp = container.querySelector('[data-uid="' + numInp.dataset.peer + '"]');
+    if (rangeInp && rangeInp.dataset.prop && rangeInp.dataset.prop.startsWith('intro.')) {
+      const subKey = rangeInp.dataset.prop.slice(6);
+      numInp.addEventListener('change', () => {
+        const v = parseFloat(numInp.value) || 0;
+        if (!el.intro) el.intro = {};
+        el.intro[subKey] = v;
+        if (rangeInp) rangeInp.value = v;
+      });
+    }
+  });
+
+  // Add Keyframe button — update label to show current time
+  const btnAddKf = container.querySelector('#btnAddKf');
+  if (btnAddKf) {
+    // Show current time on the button
+    function updateKfBtnLabel() {
+      const t = currentTime();
+      btnAddKf.textContent = '+ Add Keyframe at ' + fmt(t);
+    }
+    updateKfBtnLabel();
+    // Refresh label every 200ms while panel is open
+    const kfLabelInterval = setInterval(updateKfBtnLabel, 200);
+    // Clean up interval when panel is replaced
+    const kfObserver = new MutationObserver(() => {
+      if (!document.contains(btnAddKf)) { clearInterval(kfLabelInterval); kfObserver.disconnect(); }
+    });
+    kfObserver.observe(document.getElementById('propsPane'), { childList: true });
+
+    btnAddKf.addEventListener('click', () => {
+      const t = currentTime();
+      if (!el.keyframes) el.keyframes = [];
+      // Capture animatable props from the live element (raw values, not proxy)
+      const snap = {};
+      const animProps = ['x','y','opacity','width','height','radius','fontSize',
+                         'barCount','sensitivity','lineWidth','rotation','color',
+                         'colorTop','colorBottom','colorFill','colorSecondary'];
+      for (const p of animProps) {
+        if (p in el) snap[p] = el[p];
+      }
+      // Update existing keyframe at this time or insert new one
+      const existing = el.keyframes.findIndex(k => Math.abs(k.time - t) < 0.05);
+      if (existing >= 0) {
+        el.keyframes[existing] = { time: t, props: snap };
+      } else {
+        el.keyframes.push({ time: t, props: snap });
+        el.keyframes.sort((a, b) => a.time - b.time);
+      }
+      renderProps(el);
+    });
+  }
+
+  // Delete keyframe buttons
+  container.querySelectorAll('[data-kfdel]').forEach(b => {
+    b.addEventListener('click', () => {
+      const ki = parseInt(b.dataset.kfdel);
+      if (el.keyframes) {
+        el.keyframes.splice(ki, 1);
+        renderProps(el);
+      }
+    });
+  });
+  // Clear all keyframes
+  const btnClearKf = container.querySelector('#btnClearKf');
+  if (btnClearKf) {
+    btnClearKf.addEventListener('click', () => {
+      if (confirm('Clear all keyframes for this element?')) {
+        el.keyframes = [];
+        renderProps(el);
+      }
+    });
+  }
+}
+
+async function runFastExport(opts) {
+  opts = opts || {};
+  const fps     = opts.fps || G.exportFps;
+  const fftSize = G.fftSize;
+  const codec   = opts.codec || 'vp09.00.10.08';
+  const expW    = opts.width  || G.canvasW || 1920;
+  const expH    = opts.height || G.canvasH || 1080;
+  const vbr     = opts.vbr   || 8_000_000;
+  const abr     = opts.abr   || 128_000;
+
+  // Show modal
+  const modal = document.getElementById('exportModal');
+  modal.classList.add('show');
+  S.cancelExport = false;
+  document.getElementById('cancelExport').onclick = () => { S.cancelExport = true; };
+
+  const setModal = (pct, eta) => {
+    document.getElementById('modalPct').textContent = Math.round(pct * 100) + '%';
+    document.getElementById('modalBar').style.width  = (pct * 100) + '%';
+    document.getElementById('modalEta').textContent  = eta || '';
+  };
+
+  // Encoder errors are thrown asynchronously (outside our try/catch).
+  // We route them through a Promise so they can be caught normally.
+  let _rejectExport = null;
+  const _encoderErrorPromise = new Promise((_, rej) => { _rejectExport = rej; });
+  function onEncoderError(err) {
+    if (_rejectExport) _rejectExport(err instanceof Error ? err : new Error(String(err)));
+  }
+
+  let videoEncoder = null, audioEncoder = null;
+
+  try {
+    setModal(0, 'Loading encoder...');
+    await tick();
+
+    const muxerLib = await loadWebMMuxer();
+    if (!muxerLib) throw new Error('webm-muxer failed to load — internet required for fast export. Use Real-time instead.');
+    if (typeof VideoEncoder === 'undefined') throw new Error('VideoEncoder API unavailable. Use Chrome 94+ or Real-time export.');
+
+    const { Muxer, ArrayBufferTarget } = muxerLib;
+
+    setModal(0.01, 'Rendering audio offline...');
+    await tick();
+
+    const numCh = S.audioBuffer.numberOfChannels;
+    const sr    = S.audioBuffer.sampleRate;
+
+    // Resample to 48 kHz — Opus requires it
+    let rendered;
+    if (sr !== 48000) {
+      setModal(0.02, 'Resampling to 48 kHz...');
+      await tick();
+      const offCtx48 = new OfflineAudioContext(numCh, Math.ceil(S.audioBuffer.length * 48000 / sr), 48000);
+      const rsrc = offCtx48.createBufferSource();
+      rsrc.buffer = S.audioBuffer;
+      rsrc.connect(offCtx48.destination);
+      rsrc.start(0);
+      rendered = await offCtx48.startRendering();
+    } else {
+      const offCtx = new OfflineAudioContext(numCh, S.audioBuffer.length, sr);
+      const osrc = offCtx.createBufferSource();
+      osrc.buffer = S.audioBuffer;
+      osrc.connect(offCtx.destination);
+      osrc.start(0);
+      rendered = await offCtx.startRendering();
+    }
+    const renderSr  = rendered.sampleRate;  // always 48000 after resample
+    const renderPcm = rendered.getChannelData(0); // mono PCM for FFT
+
+    const totalFrames = Math.ceil(S.duration * fps);
+    const spf         = Math.ceil(renderSr / fps);
+
+    // ── Muxer target ──────────────────────────────────────────────────
+    // StreamTarget with position tracking: chunks arrive with their byte
+    // offset so we can reconstruct the exact file layout at the end.
+    // We collect { data, position } pairs, sort by position, then assemble
+    // into a Uint8Array. This is correct for WebM (which seeks back to
+    // write headers) and avoids the 2x memory spike of ArrayBufferTarget.
+    // ──────────────────────────────────────────────────────────────────
+    const { StreamTarget } = muxerLib;
+    const _chunks = [];   // { data: Uint8Array, position: number }
+    let   _fileSize = 0;
+
+    const muxer = new Muxer({
+      target: new StreamTarget((data, position) => {
+        // Skip NaN-position chunks — these are internal muxer bookkeeping
+        // writes that don't correspond to actual file bytes
+        if (isNaN(position)) return;
+        _chunks.push({ data: new Uint8Array(data), position });
+        _fileSize = Math.max(_fileSize, position + data.byteLength);
+      }),
+      video: { codec: codec.startsWith('vp09') ? 'V_VP9' : 'V_VP8', width: expW, height: expH, frameRate: fps },
+      audio: { codec: 'A_OPUS', sampleRate: renderSr, numberOfChannels: numCh },
+      firstTimestampBehavior: 'offset',
+    });
+
+    videoEncoder = new VideoEncoder({
+      output: (chunk, meta) => { try { muxer.addVideoChunk(chunk, meta); } catch(e2) { onEncoderError(e2); } },
+      error: onEncoderError,
+    });
+    videoEncoder.configure({
+      codec:     codec,
+      width:     expW,
+      height:    expH,
+      bitrate:   vbr,
+      framerate: fps,
+      latencyMode: 'realtime',  // produce output promptly, avoiding buffering issues
+    });
+
+    audioEncoder = new AudioEncoder({
+      output: (chunk, meta) => { try { muxer.addAudioChunk(chunk, meta); } catch(e2) { onEncoderError(e2); } },
+      error: onEncoderError,
+    });
+    audioEncoder.configure({ codec: 'opus', sampleRate: renderSr, numberOfChannels: numCh, bitrate: abr });
+
+    const expSmooth = new Float32Array(fftSize >> 1);
+    const expWave   = new Float32Array(fftSize);
+    // Use frame-appropriate smoothing for export regardless of live setting.
+    // Live smoothness (default 82%) works at 60fps; at 30fps export we need
+    // less smoothing so bars stay reactive. Use ~55% smoothness → alpha=0.45.
+    const alpha = Math.max(0.3, 1 - G.smoothness * 0.6);
+    const t0    = performance.now();
+
+    // Resize canvas once if needed (avoid per-frame resize which clears content)
+    const origW = canvas.width, origH = canvas.height;
+    if (canvas.width !== expW || canvas.height !== expH) {
+      canvas.width = expW; canvas.height = expH;
+    }
+
+    for (let fi = 0; fi < totalFrames; fi++) {
+      if (S.cancelExport) break;
+
+      const timeSec = fi / fps;
+      const soff    = Math.floor(timeSec * renderSr);
+      S._exportTime = timeSec;
+
+      // FFT — uses original (mono) PCM offset scaled to original sr
+      const origSoff = Math.floor(timeSec * S.audioBuffer.sampleRate);
+      const origPcm  = S.audioBuffer.getChannelData(0);
+      const mag = computeFFT(origPcm, origSoff, fftSize);
+      for (let k = 0; k < expSmooth.length; k++)
+        expSmooth[k] = expSmooth[k] * (1 - alpha) + (mag[k] / 255) * alpha;
+      for (let k = 0; k < fftSize; k++) {
+        const sv = origPcm[origSoff + k] || 0;
+        expWave[k] = expWave[k] * (1 - alpha) + sv * alpha;
+      }
+
+      // Render + capture frame
+      renderFrame(expW, expH, expSmooth, expWave, timeSec);
+      const bmp = await createImageBitmap(canvas);
+      const vf  = new VideoFrame(bmp, {
+        timestamp: Math.round(timeSec * 1e6),
+        duration:  Math.round(1e6 / fps),
+      });
+      videoEncoder.encode(vf, { keyFrame: fi % (fps * 2 | 0) === 0 });
+      vf.close();
+      bmp.close();
+
+      // Audio chunk from resampled buffer
+      const aStart = soff;
+      const aEnd   = Math.min(rendered.length, soff + spf);
+      if (aEnd > aStart) {
+        const numF = aEnd - aStart;
+        const data = new Float32Array(numCh * numF);
+        for (let ch = 0; ch < numCh; ch++)
+          data.set(rendered.getChannelData(ch).subarray(aStart, aEnd), ch * numF);
+        const ad = new AudioData({
+          format:           'f32-planar',
+          sampleRate:       renderSr,
+          numberOfFrames:   numF,
+          numberOfChannels: numCh,
+          timestamp:        Math.round(timeSec * 1e6),
+          data,
+        });
+        audioEncoder.encode(ad);
+        ad.close();
+      }
+
+      // Progress + yield every frame
+      if (fi % 3 === 0) {
+        const elapsed = (performance.now() - t0) / 1000;
+        const pct2 = fi / totalFrames;
+        const eta  = pct2 > 0.02 ? 'ETA: ' + fmt(elapsed / pct2 * (1 - pct2)) : 'Calculating...';
+        setModal(pct2, eta);
+      }
+      await tick();
+
+      // Back-pressure — don't get too far ahead of the encoder
+      while (videoEncoder.encodeQueueSize > 6) {
+        await new Promise(r => setTimeout(r, 10));
+      }
+    }
+
+    // Restore canvas size
+    if (canvas.width !== origW || canvas.height !== origH) {
+      canvas.width = origW; canvas.height = origH;
+    }
+
+    S._exportTime = null;
+
+    if (!S.cancelExport) {
+      setModal(0.97, 'Flushing encoders...');
+      await tick();
+
+      // Flush both encoders; race against encoder error promise
+      await Promise.race([
+        (async () => {
+          await videoEncoder.flush();
+          await audioEncoder.flush();
+        })(),
+        _encoderErrorPromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Encoder flush timed out after 45s')), 45000)),
+      ]);
+
+      setModal(0.99, 'Saving...');
+      await tick();
+
+      // finalize() synchronously triggers remaining onData callbacks
+      muxer.finalize();
+      await tick();
+
+      if (_chunks.length === 0) throw new Error('Muxer produced no output.');
+
+      // Assemble chunks at their correct byte positions into one Uint8Array.
+      // This is necessary because WebM is not a purely sequential format —
+      // the muxer seeks back to write duration/size in the file header.
+      // We must place each chunk at its stated position, not just concatenate.
+      const fileBytes = new Uint8Array(_fileSize);
+      for (const chunk of _chunks) fileBytes.set(chunk.data, chunk.position);
+
+      saveBlob(new Blob([fileBytes], { type: 'video/webm' }), 'EAV2-export.webm');
+
+      setModal(1.0, 'Done!');
+      await new Promise(r => setTimeout(r, 1200));
+    }
+
+  } catch(err) {
+    S._exportTime = null;
+    // Attempt to close encoders gracefully to release GPU resources
+    try { if (videoEncoder && videoEncoder.state !== 'closed') videoEncoder.close(); } catch(e2) {}
+    try { if (audioEncoder && audioEncoder.state !== 'closed') audioEncoder.close(); } catch(e2) {}
+    // Restore canvas
+    if (canvas.width !== (opts.width || 1920)) { canvas.width = 1920; canvas.height = 1080; }
+
+    const msg = (err && err.message) ? err.message : String(err);
+    document.getElementById('modalSub').textContent = '';
+    document.getElementById('modalTitle').textContent = 'Export Failed';
+    document.getElementById('modalEta').textContent = msg;
+    document.getElementById('cancelExport').textContent = 'Close';
+    await new Promise(r => { document.getElementById('cancelExport').onclick = r; });
+
+  } finally {
+    S._exportTime = null;
+    modal.classList.remove('show');
+    document.getElementById('btnExport').disabled = false;
+    document.getElementById('modalTitle').textContent = 'Exporting';
+    document.getElementById('modalSub').textContent = 'Rendering frames — this is much faster than real-time';
+    document.getElementById('cancelExport').textContent = 'Cancel';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT BUTTONS
+// ═══════════════════════════════════════════════════════
+function saveBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download = name;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+document.getElementById('btnExport').addEventListener('click', () => {
+  if (!S.audioBuffer) { alert('Import an audio file first.'); return; }
+  showExportOpts();
+});
+
+// RECORD BUTTON (real-time, for streaming/OBS use)
+function ensureDestNode() {
+  if (!S.audioCtx || !S.gainNode) return null;
+  if (!S.destNode) {
+    S.destNode = S.audioCtx.createMediaStreamDestination();
+    // Tap AFTER gainNode so recording level matches what you hear,
+    // and the signal is not doubled/clipped by two separate connections.
+    S.gainNode.connect(S.destNode);
+  }
+  return S.destNode;
+}
+
+document.getElementById('btnRecord').addEventListener('click', () => {
+  if (!S.audioBuffer) { alert('Import an audio file first.'); return; }
+  if (S.recording) {
+    S.mediaRecorder.stop();
+    S.recording = false;
+    const btn = document.getElementById('btnRecord');
+    btn.innerHTML = '<span class="rec-dot"></span>Record';
+    btn.classList.remove('active');
+    return;
+  }
+  initAudio();
+  if (S.audioCtx.state === 'suspended') S.audioCtx.resume();
+  ensureDestNode();
+  const stream = canvas.captureStream(G.exportFps);
+  const at = S.destNode?.stream.getAudioTracks()[0];
+  if (at) stream.addTrack(at);
+  const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+  const rec  = new MediaRecorder(stream, {
+    mimeType:           mime,
+    videoBitsPerSecond: 8_000_000,   // 8 Mbps video
+    audioBitsPerSecond: 320_000,     // 320 kbps audio (was ~32–48 kbps default)
+  });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    saveBlob(new Blob(chunks, { type:'video/webm' }), `EAV2-live-${Date.now()}.webm`);
+    // Reset UI when recording stops (either manual or auto)
+    S.recording = false;
+    const b = document.getElementById('btnRecord');
+    b.innerHTML = '<span class="rec-dot"></span>Record';
+    b.classList.remove('active');
+  };
+  S.mediaRecorder = rec;
+  S.recording = true;
+  rec.start(100);
+
+  // Auto-stop: hook into the audio source's onended event
+  // so recording finishes and downloads automatically when the song ends.
+  const _origSrc = S.audioSrc;
+  function _watchEnd() {
+    // The current audio source may change (seek restarts it), so we poll
+    // the actual ended condition via duration comparison.
+    if (!S.recording) return; // already stopped manually
+    const t = S.isPlaying
+      ? Math.max(0, S.audioCtx.currentTime - S.startTime)
+      : S.pauseOffset;
+    if (S.duration > 0 && t >= S.duration - 0.15) {
+      // Give a tiny buffer for the last audio chunk to flush, then stop
+      setTimeout(() => { if (S.recording && S.mediaRecorder) S.mediaRecorder.stop(); }, 300);
+      return;
+    }
+    // Re-check every 200ms while playing
+    if (S.isPlaying || t < S.duration - 0.5) {
+      setTimeout(_watchEnd, 200);
+    } else {
+      // Paused before end — wait for play to resume
+      setTimeout(_watchEnd, 500);
+    }
+  }
+  _watchEnd();
+
+  if (!S.isPlaying) playAudio(S.pauseOffset);
+  const btn = document.getElementById('btnRecord');
+  btn.innerHTML = '<span class="rec-dot blink"></span>Stop';
+  btn.classList.add('active');
+});
+
+// ═══════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+// STATUS BAR
+// ═══════════════════════════════════════════════════════
+function setStatus(msg) {
+  const el = document.getElementById('statusBar');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════
+// CANVAS INTERACTION — select, move, resize
+// ═══════════════════════════════════════════════════════
+(function() {
+  const w = document.getElementById('canvasWrap');
+  const tooltip = document.getElementById('canvasTooltip');
+
+  function canvasFrac(e) {
+    const r = canvas.getBoundingClientRect();
+    return { fx: (e.clientX - r.left) / r.width, fy: (e.clientY - r.top) / r.height };
+  }
+
+  function hitTest(fx, fy) {
+    for (let i = S.elements.length - 1; i >= 0; i--) {
+      const el = S.elements[i];
+      if (el.visible === false) continue;
+      if (el.type === 'text') {
+        const hw = (el.fontSize || 0.05) * 3;
+        if (Math.abs(fx - el.x) < hw && Math.abs(fy - el.y) < 0.07) return el;
+      } else if (el.type === 'bars') {
+        // bottom-anchored: x=left, y=bottom edge
+        if (fx >= el.x && fx <= el.x + (el.width||0.8) &&
+            fy >= el.y - (el.height||0.3) && fy <= el.y + 0.02) return el;
+      } else if (el.type === 'waveform') {
+        // centred on el.y
+        const halfH = (el.height||0.12) / 2;
+        if (fx >= el.x && fx <= el.x + (el.width||0.8) &&
+            fy >= el.y - halfH && fy <= el.y + halfH) return el;
+      } else if (el.type === 'spectrum') {
+        const sw = el.width||0.8;
+        const sx = el.mirror !== false ? el.x - sw/2 : el.x;
+        if (fx >= sx && fx <= sx + sw &&
+            fy >= el.y - (el.height||0.3) && fy <= el.y + 0.02) return el;
+      } else if (el.type === 'progress') {
+        if (fx >= el.x && fx <= el.x + (el.width||0.9) &&
+            Math.abs(fy - el.y) < 0.04) return el;
+      } else if ('width' in el && 'height' in el) {
+        // centred anchor
+        const hw = (el.width||0.5) / 2, hh = (el.height||0.3) / 2;
+        if (fx >= el.x - hw && fx <= el.x + hw &&
+            fy >= el.y - hh && fy <= el.y + hh) return el;
+      } else if ('radius' in el) {
+        const r = el.radius || 0.1;
+        if ((fx-el.x)*(fx-el.x) + (fy-el.y)*(fy-el.y) < r*r*1.8) return el;
+      }
+    }
+    return null;
+  }
+
+  function getResizeHandle(el, fx, fy) {
+    if (!('width' in el) && !('radius' in el)) return null;
+    const thr = 0.022;  // slightly larger hit zone
+    let ex, ey, ew, eh;
+    if (el.type === 'bars' || el.type === 'waveform') {
+      ex = el.x; ey = el.y - (el.height||0.3); ew = el.width||0.8; eh = el.height||0.3;
+    } else if (el.type === 'spectrum') {
+      ew = el.width||0.8; eh = el.height||0.3;
+      // Mirror: centred on el.x; non-mirror: el.x is left edge
+      ex = (el.mirror !== false ? el.x - ew/2 : el.x);
+      ey = el.y - eh;
+    } else if (el.type === 'progress') {
+      ex = el.x; ey = el.y - (el.height||0.008)/2; ew = el.width||0.9; eh = el.height||0.008;
+    } else if ('radius' in el) {
+      const r = el.radius||0.1;
+      ex = el.x-r; ey = el.y-r; ew = r*2; eh = r*2;
+    } else {
+      ew = el.width||0.5; eh = el.height||0.3;
+      ex = el.x - ew/2; ey = el.y - eh/2;
+    }
+    const corners = [
+      { cx:ex,    cy:ey,    dw:-1, dh:-1 },
+      { cx:ex+ew, cy:ey,    dw: 1, dh:-1 },
+      { cx:ex,    cy:ey+eh, dw:-1, dh: 1 },
+      { cx:ex+ew, cy:ey+eh, dw: 1, dh: 1 },
+    ];
+    for (const c of corners) {
+      if (Math.abs(fx - c.cx) < thr && Math.abs(fy - c.cy) < thr) return c;
+    }
+    return null;
+  }
+
+  w.addEventListener('mousemove', e => {
+    const { fx, fy } = canvasFrac(e);
+    if (S.dragEl && S.dragMode === 'move') {
+      const dx = fx - S.dragOx, dy = fy - S.dragOy;
+      S.dragEl.x = Math.max(0, Math.min(1, S.dragElStartX + dx));
+      S.dragEl.y = Math.max(0, Math.min(1, S.dragElStartY + dy));
+      renderLayerList();
+      renderProps(S.dragEl);
+      updateOverlay();
+      return;
+    }
+    if (S.dragEl && S.dragMode === 'resize') {
+      const dx = fx - S.dragOx, dy = fy - S.dragOy;
+      const el2 = S.dragEl;
+      if ('radius' in el2) {
+        el2.radius = Math.max(0.02, S.dragElStartR + Math.max(Math.abs(dx), Math.abs(dy)) * 0.5);
+      } else {
+        if ('width'  in el2) el2.width  = Math.max(0.02, S.dragElStartW + dx * S.dragDW);
+        if ('height' in el2 && el2.type !== 'text')
+          el2.height = Math.max(0.004, S.dragElStartH + dy * S.dragDH);
+      }
+      renderProps(el2);
+      updateOverlay();
+      return;
+    }
+    // Hover tooltip
+    const hit = hitTest(fx, fy);
+    S.hoverEl = hit;
+    if (hit) {
+      const typeLabels = { bars:'Bar Visualizer', circular:'Circular Viz', waveform:'Waveform',
+        progress:'Progress Bar', text:'Text Label', energy:'Energy Pulse',
+        spectrum:'Spectrum Fill', particles:'Particles', image:'Image Layer' };
+      const label = typeLabels[hit.type] || hit.type;
+      const resH = getResizeHandle(hit, fx, fy);
+      tooltip.textContent = hit.name + '  ·  ' + label + (resH ? '  [resize]' : '  [drag to move]');
+      tooltip.style.display = '';
+      setStatus(hit.name + ' — ' + (resH ? 'Drag corner to resize' : 'Drag to reposition  ·  corners to resize'));
+      w.style.cursor = resH ? 'nwse-resize' : 'move';
+    } else {
+      tooltip.style.display = 'none';
+      setStatus('');
+      w.style.cursor = '';
+    }
+    updateOverlay();
+  });
+
+  w.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    const { fx, fy } = canvasFrac(e);
+    const hit = hitTest(fx, fy);
+    if (hit) {
+      selectEl(hit.id);
+      const resH = getResizeHandle(hit, fx, fy);
+      S.dragEl        = hit;
+      S.dragOx        = fx; S.dragOy = fy;
+      S.dragElStartX  = hit.x; S.dragElStartY = hit.y;
+      S.dragElStartW  = hit.width  || hit.radius || 0;
+      S.dragElStartH  = hit.height || hit.radius || 0;
+      S.dragElStartR  = hit.radius || 0;
+      if (resH) {
+        S.dragMode = 'resize';
+        S.dragDW = resH.dw; S.dragDH = resH.dh;
+      } else {
+        S.dragMode = 'move';
+      }
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (S.dragEl) { S.dragEl = null; S.dragMode = null; }
+  });
+
+  w.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+    S.hoverEl = null;
+    w.style.cursor = '';
+    updateOverlay();
+  });
+
+  // Click on empty canvas area deselects
+  w.addEventListener('click', e => {
+    if (e.target !== w && e.target !== canvas && e.target.id !== 'overlay') return;
+    const { fx, fy } = canvasFrac(e);
+    const hit = hitTest(fx, fy);
+    if (!hit) {
+      S.selectedId = null;
+      renderLayerList();
+      renderProps(null);
+      updateOverlay();
+    }
+  });
+
+  function updateOverlay() {
+    const svg = document.getElementById('overlay');
+    if (!svg) return;
+    // Set SVG display size to match the scaled canvas wrapper
+    const wrapRect = w.getBoundingClientRect();
+    const dispW = wrapRect.width || w.clientWidth || 1;
+    const dispH = wrapRect.height || w.clientHeight || 1;
+    svg.setAttribute('width',  dispW);
+    svg.setAttribute('height', dispH);
+    svg.setAttribute('viewBox', '0 0 ' + dispW + ' ' + dispH);
+    svg.innerHTML = '';
+    const scale = dispW / 1920;
+    if (!scale) return;
+
+    function drawGhost(el) {
+      // Use normalised coords (0-1) then multiply by display size directly
+      // dispW/dispH are the actual pixel dimensions of the rendered canvas element
+      let fx, fy, fw, fh;  // all in 0-1 fractions
+      if (el.type === 'bars') {
+        fx = el.x; fy = el.y - (el.height||0.3); fw = el.width||0.8; fh = el.height||0.3;
+      } else if (el.type === 'waveform') {
+        // Waveform is centred on el.y
+        const halfH = (el.height||0.12) / 2;
+        fx = el.x; fy = el.y - halfH; fw = el.width||0.8; fh = el.height||0.12;
+      } else if (el.type === 'spectrum') {
+        fw = el.width||0.8; fh = el.height||0.3;
+        // Mirror: centred; non-mirror: starts at el.x (left edge)
+        fx = el.mirror !== false ? el.x - fw/2 : el.x;
+        fy = el.y - fh;
+      } else if (el.type === 'progress') {
+        fx = el.x; fy = el.y - (el.height||0.008)/2; fw = el.width||0.9; fh = Math.max(el.height||0.008, 0.01);
+      } else if (el.type === 'text') {
+        const hw = (el.fontSize||0.05)*3; const hh = 0.07;
+        fx = el.x-hw; fy = el.y-hh; fw = hw*2; fh = hh*2;
+      } else if ('radius' in el) {
+        const r = el.radius||0.1; const ar = r * Math.min(1,1080/1920);
+        fx = el.x-r; fy = el.y-ar; fw = r*2; fh = ar*2;
+      } else {
+        fw = el.width||0.5; fh = el.height||0.3;
+        fx = el.x-fw/2; fy = el.y-fh/2;
+      }
+      const px = fx*dispW, py = fy*dispH, pw = fw*dispW, ph = fh*dispH;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', px); rect.setAttribute('y', py);
+      rect.setAttribute('width', pw); rect.setAttribute('height', ph);
+      rect.setAttribute('fill', 'rgba(180,180,200,0.06)');
+      rect.setAttribute('stroke', 'rgba(200,200,220,0.5)'); rect.setAttribute('stroke-width', '1');
+      rect.setAttribute('stroke-dasharray', '4,3');
+      rect.setAttribute('rx', '2');
+      g.appendChild(rect);
+
+      // Label
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', px + 4); txt.setAttribute('y', py - 4);
+      txt.setAttribute('font-family', 'JetBrains Mono, monospace');
+      txt.setAttribute('font-size', '9'); txt.setAttribute('fill', 'rgba(200,200,220,0.7)');
+      txt.textContent = el.name;
+      g.appendChild(txt);
+
+      // Resize handles (corners)
+      if ('width' in el || 'radius' in el) {
+        const corners = [[px, py], [px+pw, py], [px, py+ph], [px+pw, py+ph]];
+        for (const [cx2, cy2] of corners) {
+          const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          c.setAttribute('cx', cx2); c.setAttribute('cy', cy2); c.setAttribute('r', '4');
+          c.setAttribute('fill', 'rgba(200,200,220,0.8)'); c.setAttribute('stroke', 'rgba(0,0,0,0.4)'); c.setAttribute('stroke-width', '1');
+          g.appendChild(c);
+        }
+      }
+      svg.appendChild(g);
+    }
+
+    const activeEl = S.dragEl || (S.hoverEl && S.hoverEl.id !== S.selectedId ? null : null);
+    const selEl2 = S.selectedId !== null ? S.elements.find(e => e.id === S.selectedId) : null;
+    if (S.hoverEl && S.hoverEl !== selEl2) drawGhost(S.hoverEl);
+    if (selEl2) drawGhost(selEl2);
+  }
+
+  // Expose for external refresh
+  window._updateOverlay = updateOverlay;
+})();
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName;
+  const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+  // Space = play/pause (ignore if typing in an input)
+  if (e.key === ' ' && !inInput) {
+    e.preventDefault();
+    if (!S.audioBuffer) return;
+    if (S.audioCtx && S.audioCtx.state === 'suspended') S.audioCtx.resume();
+    S.isPlaying ? pauseAudio() : playAudio(S.pauseOffset);
+  }
+
+  // Escape = deselect
+  if (e.key === 'Escape') {
+    S.selectedId = null;
+    S.dragEl = null; S.dragMode = null;
+    renderLayerList();
+    renderProps(null);
+    if (window._updateOverlay) window._updateOverlay();
+  }
+
+  // Delete/Backspace = remove selected element
+  if ((e.key === 'Delete' || e.key === 'Backspace') &&
+      S.selectedId !== null && !inInput) {
+    removeElement(S.selectedId);
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// EXPORT OPTIONS MODAL
+// ═══════════════════════════════════════════════════════
+const FORMAT_NOTES = {
+  'webm-vp9': 'VP9 fast export — uses WebCodecs API (Chrome 94+). Fastest option.',
+  'webm-vp8': 'VP8 fast export — slightly slower than VP9, broader compat.',
+  'fallback':  'Real-time recording — plays the audio while capturing. Slowest but most compatible.',
+};
+
+function showExportOpts() {
+  const modal = document.getElementById('exportOptsModal');
+  const noteEl = document.getElementById('formatNote');
+  function updateNote() { noteEl.textContent = FORMAT_NOTES[document.getElementById('optFormat').value] || ''; }
+  updateNote();
+  document.getElementById('optFormat').addEventListener('change', updateNote);
+  modal.classList.add('show');
+  document.getElementById('optsCancel').onclick = () => modal.classList.remove('show');
+  document.getElementById('optsStart').onclick  = () => {
+    modal.classList.remove('show');
+    const fmt2   = document.getElementById('optFormat').value;
+    const res    = document.getElementById('optRes').value.split('x').map(Number);
+    const fps    = parseInt(document.getElementById('optFps').value);
+    const vbr    = parseInt(document.getElementById('optVBitrate').value);
+    const abr    = parseInt(document.getElementById('optABitrate').value);
+    G.exportFps  = fps;
+    document.getElementById('btnExport').disabled = true;
+    if (fmt2 === 'fallback') runRealtimeExport(fps, vbr);
+    else runFastExport({ codec: fmt2 === 'webm-vp9' ? 'vp09.00.10.08' : 'vp8', width: res[0], height: res[1], fps, vbr, abr });
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// REAL-TIME EXPORT (fallback)
+// ═══════════════════════════════════════════════════════
+function runRealtimeExport(fps, vbr) {
+  if (!S.audioBuffer) { document.getElementById('btnExport').disabled = false; return; }
+  initAudio();
+  if (S.audioCtx.state === 'suspended') S.audioCtx.resume();
+  if (S.isPlaying) pauseAudio();
+  S.pauseOffset = 0;
+
+  const modal = document.getElementById('exportModal');
+  modal.classList.add('show');
+  S.cancelExport = false;
+  document.getElementById('modalTitle').textContent = 'Real-time Export';
+  document.getElementById('modalSub').textContent = 'Playing and recording in real-time...';
+  document.getElementById('cancelExport').textContent = 'Cancel';
+
+  // Ensure dest node for audio capture
+  if (!S.destNode) {
+    S.destNode = S.audioCtx.createMediaStreamDestination();
+    S.analyser.connect(S.destNode);
+  }
+  const stream = canvas.captureStream(fps);
+  const at = S.destNode.stream.getAudioTracks()[0];
+  if (at) stream.addTrack(at);
+  const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+  const rec  = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: vbr });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    saveBlob(new Blob(chunks, { type: 'video/webm' }), 'EAV2-export.webm');
+    modal.classList.remove('show');
+    document.getElementById('btnExport').disabled = false;
+  };
+  document.getElementById('cancelExport').onclick = () => { S.cancelExport = true; rec.stop(); };
+  playAudio(0);
+  rec.start(100);
+
+  const t0 = Date.now();
+  const iv = setInterval(() => {
+    const elapsed = (Date.now() - t0) / 1000;
+    const pct = Math.min(0.99, elapsed / S.duration);
+    document.getElementById('modalBar').style.width  = (pct * 100) + '%';
+    document.getElementById('modalPct').textContent  = Math.round(pct * 100) + '%';
+    document.getElementById('modalEta').textContent  = 'ETA: ' + fmt(S.duration - elapsed);
+    if (elapsed >= S.duration + 0.5 || S.cancelExport) {
+      clearInterval(iv);
+      if (!S.cancelExport) rec.stop();
+    }
+  }, 400);
+}
+
+// ═══════════════════════════════════════════════════════
+// PROJECT SAVE / LOAD
+// ═══════════════════════════════════════════════════════
+document.getElementById('btnSave').addEventListener('click', saveProject);
+document.getElementById('btnLoad').addEventListener('click', () => document.getElementById('projInput').click());
+document.getElementById('projInput').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const fr = new FileReader();
+  fr.onload = ev => loadProject(ev.target.result, f.name);
+  fr.readAsText(f);
+});
+
+function saveProject() {
+  if (!S.audioBuffer) { _doSave(false); return; }
+  // Show modal asking whether to include audio
+  const modal = document.getElementById('saveAudioModal');
+  modal.style.display = 'flex';
+  function cleanup() { modal.style.display = 'none'; }
+  document.getElementById('saveWithAudio').onclick = () => { cleanup(); _doSave(true); };
+  document.getElementById('saveNoAudio').onclick   = () => { cleanup(); _doSave(false); };
+}
+
+function _doSave(includeAudio) {
+  const layers = S.elements.map(el => {
+    const out = {};
+    for (const k in el) {
+      if (k === '_img' || k === '_video') continue;
+      out[k] = el[k];
+    }
+    return out;
+  });
+
+  // Encode audio to base64 if requested
+  let audioDataUrl = null;
+  if (includeAudio && S.audioBuffer) {
+    // Render to WAV via OfflineAudioContext and encode inline
+    // For simplicity, store the original file data URL if available
+    audioDataUrl = S._audioDataUrl || null;
+  }
+
+  const proj = {
+    _format: 'eav2', _version: 1,
+    audioFileName: S.audioFileName || '',
+    audioDataUrl: audioDataUrl,
+    globalSmoothing: G.smoothness,
+    fftSize: G.fftSize,
+    canvasW: G.canvasW || 1920,
+    canvasH: G.canvasH || 1080,
+    bgDataUrl: S.bgDataUrl || null,
+    bgMode: S.bgMode || 'dark',
+    bgColor: S.bgColor || '#07080e',
+    bgGradient: S.bgGradient || { a:'#1a0533', b:'#0a1a3a', angle:135 },
+    bgImageFit: S.bgImageFit || 'cover',
+    layers, nextId: S.nextId,
+  };
+  const name = (S.audioFileName || 'project').replace(/\.[^.]+$/, '') + '.eav2';
+  saveBlob(new Blob([JSON.stringify(proj, null, 2)], { type: 'application/json' }), name);
+}
+
+async function loadProject(jsonStr, fileName) {
+  let proj;
+  try { proj = JSON.parse(jsonStr); } catch(e) { alert('Invalid project file: ' + fileName); return; }
+  if (!proj || proj._format !== 'eav2') { alert('Not an EAV2 project file.'); return; }
+  setStatus('Loading project...');
+  if (S.isPlaying) pauseAudio();
+
+  // BG image
+  S.bgImage = null; S.bgDataUrl = null;
+  // Restore canvas resolution
+  if (proj.canvasW && proj.canvasH) {
+    setCanvasResolution(proj.canvasW, proj.canvasH);
+    const resEl = document.getElementById('gResolution');
+    if (resEl) resEl.value = proj.canvasW + 'x' + proj.canvasH;
+  }
+
+  // Restore bg settings
+  S.bgMode     = proj.bgMode     || 'dark';
+  S.bgColor    = proj.bgColor    || '#07080e';
+  S.bgGradient = proj.bgGradient || { a:'#1a0533', b:'#0a1a3a', angle:135 };
+
+  // Restore embedded audio if present
+  if (proj.audioDataUrl && !S.audioBuffer) {
+    setStatus('Restoring audio...');
+    await new Promise(res => {
+      initAudio();
+      fetch(proj.audioDataUrl)
+        .then(r => r.arrayBuffer())
+        .then(ab => S.audioCtx.decodeAudioData(ab, buf => {
+          S.audioBuffer   = buf;
+          S.duration      = buf.duration;
+          S.audioFileName = proj.audioFileName || 'embedded audio';
+          S._audioDataUrl = proj.audioDataUrl;
+          document.getElementById('audioName').textContent = S.audioFileName;
+          document.getElementById('timeTotal').textContent = fmt(S.duration);
+          hint.style.display = 'none';
+          res();
+        }, res))
+        .catch(res);
+    });
+    setStatus('');
+  }
+
+  if (proj.bgDataUrl && proj.bgMode === 'image') {
+    await new Promise(res => {
+      const img = new Image();
+      img.onload = () => { S.bgImage = img; S.bgDataUrl = proj.bgDataUrl; res(); };
+      img.onerror = () => { S.bgMode = 'dark'; res(); };
+      img.src = proj.bgDataUrl;
+    });
+  } else {
+    S.bgImage = null;
+  }
+
+  // Sync UI controls
+  const bgModeEl = document.getElementById('gBgMode');
+  if (bgModeEl) {
+    bgModeEl.value = S.bgMode;
+    bgModeEl.dispatchEvent(new Event('change'));
+    const ca = document.getElementById('gBgGradA');
+    const cb = document.getElementById('gBgGradB');
+    const cc = document.getElementById('gBgColor');
+    const cang = document.getElementById('gBgGradAngle');
+    if (ca)   ca.value   = S.bgGradient.a;
+    if (cb)   cb.value   = S.bgGradient.b;
+    if (cc)   cc.value   = S.bgColor;
+    if (cang) { cang.value = S.bgGradient.angle; document.getElementById('gBgGradAngleVal').textContent = S.bgGradient.angle + '°'; }
+  }
+
+  // Layers
+  const layers = proj.layers || [];
+  const restored = [];
+  for (const lay of layers) {
+    // Backwards compat: % freq -> Hz
+    if (lay.type !== 'image' && lay.freqHigh !== undefined && lay.freqHigh <= 100) {
+      lay.freqLow  = Math.round((lay.freqLow  || 0)  / 100 * 20000);
+      lay.freqHigh = Math.round((lay.freqHigh || 75) / 100 * 20000);
+    }
+    if (lay.type === 'image' && lay._dataUrl) {
+      await new Promise(res => {
+        const img = new Image();
+        img.onload = () => { lay._img = img; res(); };
+        img.onerror = res;
+        img.src = lay._dataUrl;
+      });
+    }
+    restored.push(lay);
+  }
+
+  S.elements = restored;
+  S.nextId = proj.nextId || (restored.length + 1);
+  if (proj.globalSmoothing != null) G.smoothness = proj.globalSmoothing;
+  if (proj.fftSize) G.fftSize = proj.fftSize;
+  S.audioFileName = proj.audioFileName || '';
+  S.selectedId = null;
+  renderLayerList();
+  renderProps(null);
+  document.getElementById('audioName').textContent = S.audioFileName || 'Project loaded — re-import audio to play';
+  if (restored.length) hint.style.display = 'none';
+  setStatus('');
+}
+
+
+
+// Custom confirm dialog — replaces confirm() which is blocked in sandboxed iframes
+function showConfirm(msg) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('confirmModal');
+    document.getElementById('confirmMsg').textContent = msg;
+    modal.style.display = 'flex';
+    function yes() { cleanup(); resolve(true); }
+    function no()  { cleanup(); resolve(false); }
+    function cleanup() {
+      modal.style.display = 'none';
+      document.getElementById('confirmYes').removeEventListener('click', yes);
+      document.getElementById('confirmNo').removeEventListener('click', no);
+    }
+    document.getElementById('confirmYes').addEventListener('click', yes);
+    document.getElementById('confirmNo').addEventListener('click', no);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════════════════════
+const TEMPLATES = [
+  {
+    name: 'Minimal Bars',
+    desc: 'Clean centred bar visualiser with progress bar',
+    icon: '▋▋▋',
+    build: () => [
+      { ...DEFAULTS.bars,     id:null, name:'Bars',     x:0.1, y:0.85, width:0.8, height:0.25, mirror:true, glow:false, colorTop:'#ffffff', colorBottom:'#ffffff22' },
+      { ...DEFAULTS.progress, id:null, name:'Progress', x:0.1, y:0.95, width:0.8, glow:false, colorFill:'#ffffff', colorBg:'#ffffff22' },
+      { ...DEFAULTS.text,     id:null, name:'Title',    x:0.5, y:0.18, fontSize:0.055, bold:true, color:'#ffffff', shadow:true, content:'Track Title' },
+      { ...DEFAULTS.text,     id:null, name:'Artist',   x:0.5, y:0.27, fontSize:0.028, bold:false, color:'#ffffffaa', shadow:false, content:'Artist Name' },
+    ],
+  },
+  {
+    name: 'Neon Circular',
+    desc: 'Circular visualiser with energy pulse and glow',
+    icon: '◎',
+    build: () => [
+      { ...DEFAULTS.circular, id:null, name:'Circle',  x:0.5, y:0.48, radius:0.18, colorTop:'#a78bfa', glow:true, bars:180, sensitivity:1.3 },
+      { ...DEFAULTS.energy,   id:null, name:'Pulse',   x:0.5, y:0.48, radius:0.07, color:'#c66fda', glow:true, ringCount:4, pulseSpeed:1.2 },
+      { ...DEFAULTS.progress, id:null, name:'Progress',x:0.08, y:0.93, width:0.84, colorFill:'#a78bfa', colorBg:'#a78bfa22', glow:true },
+      { ...DEFAULTS.text,     id:null, name:'Title',   x:0.5, y:0.78, fontSize:0.042, bold:true, color:'#ffffff', content:'Track Title' },
+    ],
+  },
+  {
+    name: 'Spectrum Wave',
+    desc: 'Filled spectrum with waveform overlay',
+    icon: '〜',
+    build: () => [
+      { ...DEFAULTS.spectrum,  id:null, name:'Spectrum', x:0.5, y:0.82, width:1.0, height:0.38, colorTop:'#5ae4d0', colorBottom:'rgba(90,228,208,0)', mirror:true, glow:false, sensitivity:1.2 },
+      { ...DEFAULTS.waveform,  id:null, name:'Wave',     x:0.0, y:0.65, width:1.0, height:0.18, color:'#ffffff', lineWidth:1.5, fill:false, opacity:0.4, sensitivity:0.8 },
+      { ...DEFAULTS.progress,  id:null, name:'Progress', x:0.05, y:0.94, width:0.9, colorFill:'#5ae4d0', colorBg:'#5ae4d022', glow:true },
+      { ...DEFAULTS.text,      id:null, name:'Title',    x:0.5, y:0.14, fontSize:0.06, bold:true, color:'#ffffff', content:'Track Title' },
+      { ...DEFAULTS.text,      id:null, name:'Artist',   x:0.5, y:0.24, fontSize:0.030, bold:false, color:'#ffffffbb', content:'Artist Name' },
+    ],
+  },
+  {
+    name: 'Particles & Text',
+    desc: 'Ambient particle field with large title',
+    icon: '⁘',
+    build: () => [
+      { ...DEFAULTS.particles, id:null, name:'Particles', x:0.5, y:0.5, width:1.0, height:1.0, count:200, sizeMin:1, sizeMax:3, speed:0.6, color:'#a78bfa', glow:false, sensitivity:1.5 },
+      { ...DEFAULTS.text,      id:null, name:'Title',     x:0.5, y:0.44, fontSize:0.075, bold:true, color:'#ffffff', shadow:true, content:'Track Title' },
+      { ...DEFAULTS.text,      id:null, name:'Artist',    x:0.5, y:0.56, fontSize:0.032, bold:false, color:'#ffffffcc', content:'Artist Name' },
+      { ...DEFAULTS.progress,  id:null, name:'Progress',  x:0.15, y:0.88, width:0.7, colorFill:'#a78bfa', colorBg:'#a78bfa33', glow:true },
+    ],
+  },
+  {
+    name: 'Dual Bars',
+    desc: 'Mirrored bars top and bottom',
+    icon: '▋',
+    build: () => [
+      { ...DEFAULTS.bars, id:null, name:'Bars Top',    x:0.05, y:0.42, width:0.9, height:0.22, mirror:true, glow:false, colorTop:'#f5a623', colorBottom:'#f5a62322', rounded:true },
+      { ...DEFAULTS.bars, id:null, name:'Bars Bottom', x:0.05, y:0.98, width:0.9, height:0.22, mirror:true, glow:false, colorTop:'#a78bfa', colorBottom:'#a78bfa22', rounded:true },
+      { ...DEFAULTS.text, id:null, name:'Title',       x:0.5, y:0.5, fontSize:0.065, bold:true, color:'#ffffff', content:'Track Title' },
+      { ...DEFAULTS.text, id:null, name:'Artist',      x:0.5, y:0.61, fontSize:0.030, bold:false, color:'#ffffffaa', content:'Artist Name' },
+      { ...DEFAULTS.progress, id:null, name:'Progress', x:0.1, y:0.07, width:0.8, colorFill:'#f5a623', colorBg:'#f5a62322' },
+    ],
+  },
+  {
+    name: 'Lo-Fi Chill',
+    desc: 'Waveform + circular with muted palette',
+    icon: '✦',
+    build: () => [
+      { ...DEFAULTS.circular, id:null, name:'Circle',   x:0.25, y:0.48, radius:0.15, colorTop:'#f5a623', glow:false, bars:120, sensitivity:1.0 },
+      { ...DEFAULTS.waveform, id:null, name:'Wave',     x:0.42, y:0.35, width:0.55, height:0.15, color:'#ffffff', lineWidth:2, fill:true, opacity:0.7 },
+      { ...DEFAULTS.text,     id:null, name:'Title',    x:0.71, y:0.48, fontSize:0.044, bold:true, color:'#ffffff', align:'left', content:'Track Title' },
+      { ...DEFAULTS.text,     id:null, name:'Artist',   x:0.71, y:0.57, fontSize:0.026, bold:false, color:'#ffffffaa', align:'left', content:'Artist Name' },
+      { ...DEFAULTS.progress, id:null, name:'Progress', x:0.05, y:0.93, width:0.9, colorFill:'#f5a623', colorBg:'#f5a62333', glow:false },
+    ],
+  },
+];
+
+async function applyTemplate(tmpl) {
+  if (S.elements.length > 0) {
+    const ok = await showConfirm('Apply "' + tmpl.name + '"? This will replace your ' + S.elements.length + ' existing element' + (S.elements.length > 1 ? 's' : '') + '.');
+    if (!ok) return;
+  }
+  if (S.isPlaying) pauseAudio();
+  S.elements = [];
+  S.selectedId = null;
+  S.nextId = 1;
+  for (const def of tmpl.build()) {
+    const el = Object.assign({}, def, {
+      id: S.nextId++,
+      visible: true,
+      intro: { type: 'none', duration: 0.5, delay: 0 },
+      keyframes: [],
+    });
+    S.elements.push(el);
+  }
+  renderLayerList();
+  renderProps(null);
+  document.getElementById('templatesModal').style.display = 'none';
+  if (S.audioBuffer) hint.style.display = 'none';
+}
+
+function showTemplates() {
+  const modal = document.getElementById('templatesModal');
+  const grid  = document.getElementById('tmplGrid');
+  modal.style.display = 'flex';
+  grid.innerHTML = TEMPLATES.map((t, i) => `
+    <button data-ti="${i}" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;text-align:left;cursor:pointer;transition:all .15s;color:var(--text)">
+      <div style="font-size:20px;margin-bottom:8px">${t.icon}</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;margin-bottom:4px">${t.name}</div>
+      <div style="font-size:11px;color:var(--dim);line-height:1.4">${t.desc}</div>
+    </button>`).join('');
+  grid.querySelectorAll('[data-ti]').forEach(btn => {
+    btn.addEventListener('mouseenter', () => { btn.style.borderColor='#a78bfa'; btn.style.background='rgba(167,139,250,.08)'; });
+    btn.addEventListener('mouseleave', () => { btn.style.borderColor='var(--border)'; btn.style.background='var(--panel2)'; });
+    btn.addEventListener('click', () => applyTemplate(TEMPLATES[parseInt(btn.dataset.ti)]));
+  });
+}
+
+document.getElementById('btnTemplates').addEventListener('click', showTemplates);
+document.getElementById('tmplClose').addEventListener('click', () => {
+  document.getElementById('templatesModal').style.display = 'none';
+});
+
+
+// ═══════════════════════════════════════════════════════
+// BACKGROUND CONTROLS
+// ═══════════════════════════════════════════════════════
+(function() {
+  const modeEl        = document.getElementById('gBgMode');
+  const solidRow      = document.getElementById('bgSolidRow');
+  const gradRow       = document.getElementById('bgGradRow');
+  const imageRow      = document.getElementById('bgImageRow');
+  const colorEl       = document.getElementById('gBgColor');
+  const gradAEl       = document.getElementById('gBgGradA');
+  const gradBEl       = document.getElementById('gBgGradB');
+  const gradAngleEl   = document.getElementById('gBgGradAngle');
+  const gradAngleVal  = document.getElementById('gBgGradAngleVal');
+
+  function updateBgUI() {
+    const m = S.bgMode || 'dark';
+    modeEl.value = m;
+    solidRow.style.display = m === 'solid'    ? '' : 'none';
+    gradRow.style.display  = m === 'gradient' ? '' : 'none';
+    imageRow.style.display = m === 'image'    ? '' : 'none';
+    // Invalidate bg cache so it redraws on next frame
+    _bgCache.w = 0;
+  }
+
+  modeEl.addEventListener('change', () => {
+    S.bgMode = modeEl.value;
+    // Do NOT clear S.bgImage — retain it so switching back to image mode works
+    updateBgUI();
+  });
+
+  colorEl.addEventListener('input', () => {
+    S.bgColor = colorEl.value;
+  });
+
+  gradAEl.addEventListener('input',     () => { S.bgGradient.a = gradAEl.value; });
+  gradBEl.addEventListener('input',     () => { S.bgGradient.b = gradBEl.value; });
+  gradAngleEl.addEventListener('input', () => {
+    S.bgGradient.angle = parseInt(gradAngleEl.value);
+    gradAngleVal.textContent = gradAngleEl.value + '°';
+  });
+
+  // Image fit selector
+  const fitEl = document.getElementById('gBgImageFit');
+  if (fitEl) {
+    fitEl.addEventListener('change', () => { S.bgImageFit = fitEl.value; });
+  }
+
+  // importBG2 triggers the same bgInput file picker
+  const importBG2 = document.getElementById('importBG2');
+  if (importBG2) {
+    importBG2.addEventListener('click', () => {
+      S.bgMode = 'image';
+      document.getElementById('bgInput').click();
+    });
+  }
+
+  // importBG header button removed — bg controlled from right panel
+
+  updateBgUI();
+})();
+
+
+// ═══════════════════════════════════════════════════════
+// CANVAS CONTROLS (resolution + zoom)
+// ═══════════════════════════════════════════════════════
+(function() {
+  const resEl  = document.getElementById('gResolution');
+  const zoomEl = document.getElementById('gZoom');
+  const zoomLb = document.getElementById('gZoomVal');
+  const fitBtn = document.getElementById('btnZoomFit');
+  const z100Btn= document.getElementById('btnZoom100');
+
+  function applyZoom(pct) {
+    // Clamp to slider range
+    pct = Math.max(25, Math.min(200, Math.round(pct / 5) * 5));
+    G.zoom = pct / 100;
+    zoomEl.value = pct;
+    zoomLb.textContent = pct + '%';
+    fitCanvas();
+  }
+
+  resEl.addEventListener('change', () => {
+    const [w, h] = resEl.value.split('x').map(Number);
+    setCanvasResolution(w, h);
+  });
+
+  zoomEl.addEventListener('input', () => {
+    applyZoom(parseInt(zoomEl.value));
+  });
+
+  fitBtn.addEventListener('click', () => applyZoom(100));
+
+  z100Btn.addEventListener('click', () => {
+    const cw = G.canvasW || 1920, ch = G.canvasH || 1080;
+    const pad = 48;
+    const area = document.getElementById('canvasArea');
+    const fitScale = Math.min(
+      (area.clientWidth  - pad) / cw,
+      (area.clientHeight - pad) / ch
+    );
+    applyZoom(Math.round((1 / fitScale) * 100));
+  });
+
+  // Scroll wheel zoom — Ctrl+scroll or plain scroll over canvas area
+  document.getElementById('canvasArea').addEventListener('wheel', ev => {
+    ev.preventDefault();
+    // 5% per notch; direction: scroll up = zoom in
+    const delta = ev.deltaY < 0 ? 5 : -5;
+    applyZoom(Math.round(G.zoom * 100) + delta);
+  }, { passive: false });
+})();
+
+renderLoop();
+
+function tick() { return new Promise(function(r) { setTimeout(r, 0); }); }
+</script>
+</body>
+</html>
